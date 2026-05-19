@@ -247,6 +247,8 @@ Type-checked clean. All three routes (`/`, `/applications/[id]`, missing-ID fall
 - **Visual urgency: color + dot, not color alone.** Three tiers (red <30d/expired, amber 30-90d, green >90d, no dot when no expiration). The dot is additive because color alone fails for colorblind users.
 - **No `Card` component.** Used semantic divs and borders for the header section. Card would be one more shadcn install for a layout this simple.
 - **Used `use(params)` to unwrap.** Next.js 16 makes `params` a Promise even in client components; `use()` is the documented unwrap path. Correct API for the version.
+- **Caught a UTC vs local-midnight parsing bug** in the REFERENCE_NOW constant. new Date("2026-01-30") parses as UTC midnight, which in my local timezone (America/Los_Angeles, UTC-8) renders as "January 29" — a one-day-off display bug I would have shipped. Agent verified the stalled count didn't change (differenceInDays measures full 24h periods, so the 8-hour TZ shift doesn't cross day boundaries in any comparison), then fixed by switching to the local-midnight constructor new Date(2026, 0, 30). Defensive against a bug I likely wouldn't have noticed.
+
 #### My critical engagement
  
 The biggest judgment call this segment was about the **future-date artifact** — and specifically, deciding what *not* to build to solve it.
@@ -378,6 +380,59 @@ If any of those four had been different — if the derived layer hadn't been the
 1. Browser sanity-check the dashboard renders all three sections, "Dashboard" link in header navigates correctly, numbers match the earlier exploration script (60/$15.6M/56-of-60/7 across the four cards).
 2. Committed with message documenting this as a scope adjustment, not V1.
 3. Adding a "Scope adjustments during build" section to `scope-doc.md` to capture this honestly.
+
+### Build segment 6: Data quality callout — built, then cut
+
+**Tool:** Claude Code
+**Duration:** ~25 minutes total (7 min initial build + 10 min dropdown + 5 min reframe + 3 min revert)
+**Raw transcript:** Same Claude Code session as segments 1–5; exported at end of build to `ai-evidence/build-session.jsonl`
+
+> **Note on scope:** This segment documents work that was built, iterated, and then deliberately removed from the final submission before code freeze. The git history shows the full arc: initial callout → dropdown disclosure → text reframe → revert. The decision to cut it was the most important engineering judgment moment in this segment.
+
+#### What I was trying to surface
+
+In segment 2, I found that 27 of 37 documents marked "Expired" in the data have no `expiration_date` populated. I tightened the stalled-detection rule to require evidence (an actual expiration date in the past), which excluded these docs from automated stalled detection but left them as a data-quality finding that should be visible somewhere.
+
+The instinct: surface them in the UI as a "data quality" callout so the team can see what was deliberately excluded and why.
+
+#### What got built
+
+**First pass (~7 min):** A small bordered callout on the list-view header. Heading "Data quality," body text noting the 27-doc count and recommending manual review. Static, informational, no interaction.
+
+**Second pass (~10 min):** Added a `<details>` disclosure to expand the list of affected docs. Each row showed business name (linked to detail view) and document type. Native HTML element, no JS state, default browser styling. The dropdown made the callout feel more substantial.
+
+**Third pass (~5 min):** Realized the body text said "manual review recommended" — implying the user could fix it from this UI. But `expiration_date` isn't editable in V1 (deliberate scope decision). So "manual review" pointed at a path that didn't exist. Reworded the text to surface it as a signal, not a to-do: "These represent data entry gaps in the source system."
+
+#### Why I cut it
+
+After the reframe I sat with it and recognized the implementation was a single hardcoded check (`status === 'Expired' && !expiration_date`) presented under a "Data quality" heading. The framing overpromised. A general data-quality system catches multiple kinds of issues; this one catches exactly one. The label set an expectation the code couldn't meet.
+
+Two paths forward:
+
+1. **Build out a real data-quality framework** (multiple checks, configurable rules, severity tiers) — way out of scope for V1 and would have eaten the remaining time budget.
+2. **Cut the feature, surface the 27/37 finding through the demo narrative instead.**
+
+Option 2 wins on three dimensions:
+
+- **The engineering insight survives.** It's still in this AI log, will be in the demo, and motivates the tightened stalled rule. Nothing is lost; the artifact moves from UI to narration.
+- **The scope story gets cleaner.** One deliberate adjustment (dashboard), not two. Sharper signal on scope discipline — exactly what the brief is testing for.
+- **The brief is explicit on this.** "Telling us your tool is perfect is a red flag." Cutting your own work because it doesn't earn its place is the opposite of that red flag.
+
+#### My critical engagement
+
+This was the strongest scope-discipline moment in the build. Three things made the cut possible:
+
+1. **Willingness to look at what I'd built and ask whether the label matched the code.** "Data quality" was aspirational; the implementation was a single check. Mid-build, with momentum behind shipping it, the temptation is to keep the feature and rationalize the framing. The right move was the other direction.
+2. **The time investment was small (~22 min) and recoverable.** Sunk cost wasn't strong enough to justify shipping a weak feature.
+3. **A clear alternative existed.** The insight didn't disappear — it just moved from UI to narration. That's a real path, not a face-saving rationalization. The 27/37 finding still lands in the demo when explaining why the Expired rule was tightened.
+
+If a reviewer reads this segment and thinks *"she built it and then deleted it"* — that's exactly the read I want. The build process surfaced a real insight; the right artifact for that insight wasn't a UI feature.
+
+#### What I'm doing before Phase 4
+
+1. Code reverted cleanly. The list-view header is back to title + count + reference date + buttons. No orphaned imports, no dead helpers, no unused state. TypeScript clean. `/` returns 200.
+2. Updated `scope-doc.md` "Scope adjustments during build" section: dashboard stays as the one adjustment; data quality callout is documented as "considered and removed" so the build history is honest in the scope doc as well as here.
+3. Demo narration will surface the 27/37 finding during the stalled-detection segment, with the explicit framing: *"I built a callout for this and then cut it because the label overpromised what the code did. The right place for this insight is in the conversation with the team, not as a UI feature dressed up as a data quality system."*
  
 ---
  

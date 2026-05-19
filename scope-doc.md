@@ -129,52 +129,46 @@ What I'd ship next (if granted a V2 sprint, in priority order):
 5. Email/SMS alerts for high-urgency expirations
 
 ## Scope adjustments during build
-
-The two items below were originally cut from V1 in the scope doc above. They were reintroduced during the build as documented adjustments, not as silent scope rewrites. The original V1 list, north star, and cut rationale above remain unchanged — this section is the honest record of what was added on top of V1 and why.
-
+ 
+The dashboard view below was originally cut from V1 in the scope doc above. It was reintroduced during the build as a documented adjustment, not as a silent scope rewrite. The original V1 list, north star, and cut rationale above remain unchanged — this section is the honest record of what was added on top of V1 and why.
+ 
+A second adjustment (a data quality callout) was prototyped during build and then deliberately removed before submission. It is documented at the end of this section for transparency.
+ 
 ### Adjustment 1 — Leadership dashboard (`/dashboard`)
-
+ 
 **Original disposition:** Cut from V1 with the reasoning *"separate user with separate needs (weekly cadence, aggregate view). V2 work."*
-
+ 
 **Reintroduced as:** A snapshot dashboard view at `/dashboard` showing pipeline stat cards (active apps, pipeline value, stalled rate, expiring count), per-processor workload table sorted by stalled rate, and a top-5-most-overdue applications list.
-
+ 
 **Why this expansion is defensible:**
 - The underlying derived-state layer built for V1 (`deriveStatus`, `selectExpiringDocs`) already computed every aggregate the dashboard needs. The view composes existing helpers; it does not introduce new business logic. Total build time: 18 minutes against a 35-minute hard ceiling.
 - The original cut was about the weekly auto-generated email — a separate user with a separate cadence and separate delivery mechanism. **That piece stays cut.** What's reintroduced is the snapshot view, which is a leaner subset of the original ask.
 - Engineering judgment trigger: if the dashboard had required new aggregation logic, a new data layer, or pushed any of the other deliverables (tests, docs, demo) into a corner, it would have stayed cut.
-
 **What stays a V2 item:**
 - Weekly auto-generated email digest for leadership
 - Trends over time (this version is a point-in-time snapshot — no historical data captured)
 - Drill-down filters, date-range controls, exports
-
-### Adjustment 2 — Data quality callout
-
-**Original disposition:** Not explicitly listed in V1 or as a cut. Surfaced during build as a *finding*, not a feature.
-
-**Reintroduced as:** A small informational callout on the list view header that displays the count of documents marked `Expired` in the data but missing an `expiration_date`. Surfaces the engineering decision made in segment 2 (the tightened Expired rule requiring evidence of expiration) into the UI, where the affected docs can be reviewed.
-
-**Why this expansion is defensible:**
-- It is not new logic. The selection rule is the inverse of the predicate already used in stalled detection. The callout reads existing state; it does not introduce new state, new rules, or new persistence.
-- It addresses a real data-quality observation found during build (27 of 37 Expired-status docs have no expiration_date), turning an engineering judgment into product-visible insight.
-- This aligns with one of the responsibilities in the role description: *"implement data collection, analysis, and reporting features to support business intelligence."*
-
-**What stays out of scope:**
-- Filtering, dismissal, or "I've reviewed this" tracking on the affected docs
-- Per-app or per-processor breakdowns of data quality issues
-- Automated alerting / escalation on data quality
-
+### Considered and removed — Data quality callout
+ 
+A small callout was prototyped on the list view to surface 27 documents in the dataset marked `Expired` but missing an `expiration_date` — the same finding that motivated the tightened Expired rule in stalled detection.
+ 
+**Why it was removed before submission:**
+- The implementation was a single hardcoded check (`status === 'Expired' && !expiration_date`) presented under a "Data quality" heading. That framing overpromised what the code actually did — a general data quality system versus a single-anomaly detector.
+- The engineering insight behind it is stronger as demo narrative (it motivates the tightened stalled rule) than as a separate UI surface.
+- Removing it cleans the scope story: one deliberate exception (the dashboard), not two. Sharper signal on scope discipline.
+The 27-docs finding remains captured in the segment 2 AI log entry and will be surfaced in the demo narrative as the rationale for tightening the stalled-detection rule. The code was cleanly reverted before submission; git history shows the iteration honestly.
+ 
 ---
-
+ 
 ## Final V1 + adjustments summary
-
+ 
 | Surface | Status |
 |---|---|
 | Application list view with stalled detection | V1 (original) |
 | Application detail view with inline editing + localStorage persistence | V1 (original) |
 | Expiring-soon cross-application view | V1 (original) |
-| Leadership dashboard snapshot | Scope adjustment 1 |
-| Data quality callout | Scope adjustment 2 |
+| Leadership dashboard snapshot | Scope adjustment |
+| Data quality callout | Prototyped during build, removed before submission |
 | Weekly auto-generated leadership email | Cut — V2 |
 | Multi-user real-time sync | Cut — V2 |
 | Auth / permissions | Cut — V2 |
