@@ -111,12 +111,20 @@ export default function Home() {
             Reference date: {format(REFERENCE_NOW, "MMMM d, yyyy")} (sample data is a snapshot)
           </p>
         </div>
-        <Link
-          href="/expiring-soon"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          Expiring soon ({expiringCount})
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/expiring-soon"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Expiring soon ({expiringCount})
+          </Link>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">

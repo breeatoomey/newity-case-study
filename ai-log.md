@@ -283,6 +283,48 @@ Stays on-track throughout because the app is only 4 days old at the reference da
 1. Browser sanity-check the three things that prove localStorage actually works end-to-end: edit a status → refresh → still there; edit a status → back to list → completeness reflects change; DevTools confirms the JSON shape under `newity-doc-checklist-v1`.
 2. Added a one-line reference-date indicator to the list view header so the snapshot framing is visible to anyone using the app (not just discoverable through the demo narration).
 3. Commit before moving to the expiring-soon view.
+
+### Build segment 4: Expiring-soon view with cross-application triage
+
+**Tool:** Claude Code
+**Duration:** ~25 minutes
+**Raw transcript:** Same Claude Code session as segments 1–3; exported at end of build to `ai-evidence/build-session.jsonl`
+
+#### Prompt strategy
+
+Shortest segment so far because most of the work was composition rather than new logic. The prompt was correspondingly tight, but three things baked in still paid off:
+
+- **Explicit selection rule, with the data-quality consistency lock.** Specified that docs with `Expired` status but no `expiration_date` are excluded — same rule applied in segment 2 stalled detection. Without this lock, the agent could have reasonably included them and silently broken the consistency story across views.
+- **Pre-empted the "filter by status" mistake.** The prompt called out: "Do not filter by current status. An Approved doc expiring in 5 days still belongs here." That's exactly the team's pain point this view solves — and exactly the failure mode where a less-careful prompt would produce a view that hides the most important rows.
+- **Sanity-check on both ends of the sort.** Asked for the top 5 *and* bottom 5 by urgency. With only 7 total rows the lists overlap, but the discipline of checking both ends is what catches sort bugs that only manifest in the middle of large lists. Worth doing every time.
+
+#### What the agent produced
+
+- `src/app/expiring-soon/page.tsx` — cross-application list of every doc expiring in the next 30 days (or already expired), sorted by `expiration_date` ascending.
+- Header with split count: "5 expired · 2 expiring in next 30 days" — two numbers, not one combined, because the split is informative.
+- Per-row: business name (linked to detail view), document type, current status badge, expiration date with relative descriptor ("Expired 106 days ago" / "Expires in 8 days"), urgency dot matching the detail view's color tiers.
+- `"Expiring soon (7)"` button-styled link added to the list-view header, count derived from the same selection function the page uses so they cannot drift.
+
+#### Decisions the agent made (and surfaced)
+
+- **Extracted `urgencyTier()` into `derived.ts`** as a shared helper. The detail view now imports it; the expiring-soon view imports it. Single source of truth for "when is a date urgent."
+- **Did NOT extract the color-class mapping.** Strong distinction the agent flagged in its own words: the tier function is *policy* (when something is urgent — drift here is a real bug); the color classes are *presentation* (how urgent looks — drift here is a style nit, visible on inspection). Two different responsibilities, two different change frequencies; not worth the indirection.
+- **Extracted `selectExpiringDocs(apps, now, daysAhead)`** so both the page and the list-view header count call the same function. Stay-in-sync guarantee for free.
+- **Used `buttonVariants()` className on a Next.js `Link`** rather than wrestling with base-ui Select's `asChild` render-prop pattern. Same visual result, cleaner code.
+
+#### My critical engagement
+
+The product insight that emerged from this segment is worth more than the feature itself: **all 7 entries in the expiring-soon view are "Bank Statements (90 day)."** The agent surfaced this — other expiration-bearing docs in the data (tax returns, business licenses) have multi-year expirations that fall outside the 30-day window. Bank statements are the only short-lived doc type.
+
+That reframes what this view is for. It's not a generic "documents expiring soon" list — it's a **bank-statement-refresh triage queue**. Which is a known loan-ops workflow concern, and which the team's spreadsheet would specifically miss because the spreadsheet tracks status, not expiration. Built-in demo narrative.
+
+The other thing worth flagging: the **"Approved but expired"** rows (Northstar Accounting, Crown Jewelers in the screenshots) are this view's strongest argument for existing. A doc that's been approved and forgotten, then expires underneath the team, is exactly the kind of failure mode the current workflow can't catch — and exactly what this view surfaces. The decision to make selection driven by `expiration_date` instead of `status` is what makes this work.
+
+#### What I'm doing before the next segment
+
+1. Browser sanity-check: confirmed "Expiring soon (7)" button renders, page loads, top row is Hilltop Dental Care, business names are clickable links.
+2. Committed with message "Build segment 4: expiring-soon view with cross-app expiration triage (7 docs: 5 expired, 2 in next 30d)".
+3. V1 is feature-complete at this point — three views shipped per the original scope doc. Subsequent segments (dashboard, data quality callout) are documented as scope adjustments, not V1 work.
  
 ---
  

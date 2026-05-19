@@ -84,6 +84,7 @@ export function deriveStatus(
     pendingCount,
     isStalled: stalledReasons.length > 0,
     stalledReasons,
+    stalledDocCount: pendingStalled + underReviewStalled + expiredCount,
     expiringSoonCount: 0,
   };
 }

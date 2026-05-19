@@ -32,5 +32,6 @@ export type DerivedApplicationStatus = {
   pendingCount: number;
   isStalled: boolean;
   stalledReasons: string[];
+  stalledDocCount: number;
   expiringSoonCount: number;
 };
