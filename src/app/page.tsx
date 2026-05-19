@@ -66,6 +66,7 @@ export default function Home() {
     [apps]
   );
 
+
   const visibleRows = useMemo(() => {
     const filtered = rows.filter((r) => {
       if (stalledFilter === "stalled" && !r.derived.isStalled) return false;
@@ -100,30 +101,32 @@ export default function Home() {
 
   return (
     <main className="p-8 max-w-7xl mx-auto">
-      <header className="mb-6 flex flex-wrap justify-between items-start gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">SBA Document Checklist</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {apps.length} applications ·{" "}
-            <span className="text-destructive font-medium">{stalledCount} stalled</span>
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Reference date: {format(REFERENCE_NOW, "MMMM d, yyyy")} (sample data is a snapshot)
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/expiring-soon"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Expiring soon ({expiringCount})
-          </Link>
+      <header className="mb-6">
+        <div className="flex flex-wrap justify-between items-start gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">SBA Document Checklist</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {apps.length} applications ·{" "}
+              <span className="text-destructive font-medium">{stalledCount} stalled</span>
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Reference date: {format(REFERENCE_NOW, "MMMM d, yyyy")} (sample data is a snapshot)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/expiring-soon"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Expiring soon ({expiringCount})
+            </Link>
+          </div>
         </div>
       </header>
 

@@ -325,6 +325,59 @@ The other thing worth flagging: the **"Approved but expired"** rows (Northstar A
 1. Browser sanity-check: confirmed "Expiring soon (7)" button renders, page loads, top row is Hilltop Dental Care, business names are clickable links.
 2. Committed with message "Build segment 4: expiring-soon view with cross-app expiration triage (7 docs: 5 expired, 2 in next 30d)".
 3. V1 is feature-complete at this point — three views shipped per the original scope doc. Subsequent segments (dashboard, data quality callout) are documented as scope adjustments, not V1 work.
+
+### Build segment 5: Leadership dashboard (scope adjustment, not V1)
+
+**Tool:** Claude Code
+**Duration:** ~18 minutes (against a hard 35-minute ceiling)
+**Raw transcript:** Same Claude Code session as segments 1–4; exported at end of build to `ai-evidence/build-session.jsonl`
+
+> **Note on scope:** This segment is documented honestly as a scope expansion, not as V1 work. The leadership dashboard was explicitly cut in the original scope doc and in the Phase 2 AI log entry ("different user with separate needs, V2 work"). I reintroduced it after V1 was feature-complete because — and only because — the underlying derived-state layer I'd already built made it composable rather than original. The weekly-email auto-generation piece of the team's original ask stays a V2 item. See `scope-doc.md` for the "Scope adjustments during build" section that captures this honestly.
+
+#### Prompt strategy
+
+Two things baked into the prompt that protected the time budget:
+
+- **Hard ceiling: 35 minutes.** Stated explicitly in the prompt, with the instruction "if this segment crosses 35 minutes, stop and ship what you have. Better a partial dashboard than a late submission." Hard ceilings work better than soft estimates when scope is at risk.
+- **No new derived helpers unless absolutely necessary.** Reusing `deriveStatus` and `selectExpiringDocs` was the difference between a 30-min build and a 60-min build. The prompt was explicit about this: per-processor breakdown is a `useMemo` reduction inline in the page, not a new file.
+
+#### What the agent produced
+
+- `src/app/dashboard/page.tsx` — three sections: stat-card row (active apps, pipeline value, stalled rate, expiring count), per-processor workload table (sorted by stalled rate descending — worst first, which is the team-lead triage need), top 5 most overdue applications (ranked by stalled-doc count, business name links to detail view, stalled reasons inline).
+- "Dashboard" button-styled link in the list view header, next to the existing "Expiring soon (N)" button. Same `buttonVariants` pattern.
+- No new shadcn components, no charts, no new dependencies.
+
+#### Decisions the agent made (and surfaced)
+
+- **Added `stalledDocCount: number` to `DerivedApplicationStatus`.** Computed during the existing `deriveStatus` walk as `pendingStalled + underReviewStalled + expiredCount`. This let the top-5 ranking sort without duplicating the rule logic or string-parsing the human-readable `stalledReasons`. Single new field, no new helper, no policy duplication. **Accepted — exactly the right shape for this use case.**
+- **Two-line stat card for stalled rate** ("56 of 60" main, "93%" subtitle) instead of one combined number. The split is informative: the team lead cares about the absolute count for triage and the rate for trend awareness. Same data, two different reading modes.
+- **Section C uses a flat list, not a table** — visually distinct from the per-processor table above it. Per-row layout: business name (linked) + processor/date subtitle + stalled-reasons line, with the stalled-doc count right-aligned. Read as "here are five things to look at," not "here is data to sort and filter."
+- **Tiebreaker decision deferred.** Three apps tie at 8 stalled docs (Bluebird, TechStart, Elite Fitness). Order across the three reflects CSV order. Agent flagged this as a place where a stable tiebreaker (older app date first) would be the obvious next step. Left as-is for V2.
+
+#### My critical engagement on the scope decision
+
+The honest question I had to answer before running this segment: *Is adding this feature, after the scope doc explicitly cut it, the right call?*
+
+My reasoning:
+
+1. The cost was real but bounded — 35-minute hard ceiling, actual 18 minutes.
+2. The underlying derived layer was already doing the aggregation. The dashboard composes existing helpers; it doesn't introduce new business logic.
+3. The cut in the original scope doc was about *the weekly auto-generated email*, which is still cut. The snapshot view is a leaner subset.
+4. Honesty about the expansion preserves the scope-discipline narrative. The scope doc gets a "Scope adjustments during build" section, not a quiet rewrite of the original V1 list. The git history shows: cut → built V1 → reintroduced as documented adjustment. That's an honest engineering trail.
+
+If any of those four had been different — if the derived layer hadn't been there, if I'd run over the ceiling, if the original cut had been about exactly this snapshot view, or if the only way to fit it was to silently rewrite the scope doc — I would have left it cut.
+
+#### Demo-relevant findings worth surfacing
+
+- **Janet Morrison is 18/18 stalled — 100%.** Per-processor view makes this visible; the team lead's current spreadsheet cannot.
+- **4 of the 5 most overdue applications belong to Ricardo Fuentes.** Not necessarily a Ricardo problem — could be workload imbalance, doc-mix variance, or process drift — but it's a question the team lead would never have known to ask without this view.
+- **Maple Street Deli leads everyone at 9 stalled documents.** Aisha's only stalled-with-9 app and the single-worst case across the entire pipeline. Specific, namable, actionable.
+
+#### What I'm doing before the next segment
+
+1. Browser sanity-check the dashboard renders all three sections, "Dashboard" link in header navigates correctly, numbers match the earlier exploration script (60/$15.6M/56-of-60/7 across the four cards).
+2. Committed with message documenting this as a scope adjustment, not V1.
+3. Adding a "Scope adjustments during build" section to `scope-doc.md` to capture this honestly.
  
 ---
  
