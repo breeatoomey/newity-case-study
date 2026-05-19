@@ -81,13 +81,84 @@ Places I challenged the AI's framing and either accepted, modified, or overrode:
  
 ## Phase 2: Scoping & Planning
  
-*To be filled in once the scope doc is finalized.*
+**Date:** 05/17/2026
+**Tool:** Claude (web)
+**Output:** `scope-doc.md` (one-page scope document)
+**Goal:** Translate the Phase 1 analysis into a concrete one-page scope doc that drives the rest of the build.
+ 
+### Prompt
+ 
+> Based on the Phase 1 analysis we just did, co-draft a one-page scope doc with me. Structure I want: the problem statement (in the team's own words where possible), a single north-star user goal, the V1 feature list in priority order, an explicit cut-list with V2 framing for each cut, tech stack with one-line reasoning per choice, the data model in TypeScript, a time plan with a fallback if I run over, and a draft self-assessment I can refine after building. Be specific — no vague language. If a feature is in V1, define exactly what it does in 2-3 bullets. If it's cut, give me the actual reason and what V2 would look like.
+ 
+### Co-drafting process
+ 
+Claude produced a first draft based on the Phase 1 decisions already on the table — the three core features, the cut list, the tech stack, the time budget. I worked through the draft section by section. The places where I changed or refined what came back:
+ 
+- **Stalled-application thresholds.** Draft suggested 7 days for `Pending`. I changed to 14 days for `Pending` and kept 7 days for `Under Review`. Reasoning: a doc that's been *requested* but not yet received takes longer in normal operations (waiting on the borrower); a doc that's been received and is under review should move faster (waiting on the processor). Two different SLAs.
+- **Inline vs. modal editing.** Draft offered both as options. Committed to inline-only — fewer clicks, closer to the spreadsheet mental model the team already has.
+- **Cut justification for the leadership dashboard.** Draft's reasoning was "different user, different needs." I sharpened to "different cadence" — leadership wants weekly aggregates, ops wants real-time operational view. Building both in 4 hours means doing neither well.
+- **Time-plan fallback.** Added the explicit rule for what gets cut if I'm behind at the 1:45 mark: expiring-soon view, not the detail view. Detail makes the tool *usable*; expiring-soon makes it *valuable*. Usable wins under time pressure.
+- **Self-assessment "rough" list.** Added the threshold-hardcoding and the single-user-assumption items myself. The honest fragility list is the section that matters most for the demo — wanted to make sure it reflected my actual technical concerns, not generic ones.
+### Decisions locked in
+ 
+- V1 scope is final. Cut list is final. No new features get added mid-build without an explicit corresponding cut.
+- Stack is committed: Next.js + TypeScript + Tailwind + shadcn/ui + papaparse + localStorage + date-fns.
+- Data model is in the scope doc; will be the source of truth for the build.
+- Time plan has a documented fallback at the 1:45 checkpoint.
+### What I'm using the scope doc for
+ 
+Three jobs, in order:
+1. **Anchor for the build** — when I'm tempted to add something mid-build, I check the doc first.
+2. **Source material for the README** — the "what's built," "what's cut," and "what's next" sections lift straight in.
+3. **Demo script backbone** — the demo follows the same arc as this doc: problem → north star → built features → cuts → V2.
+
  
 ---
  
 ## Phase 3: Building
  
-*Capturing key Claude Code sessions, prompts, and decisions during the build.*
+### Session 1: Scaffold + raw table render
+ 
+**Tool:** Claude Code
+**Duration:** ~30 minutes
+**Raw transcript:** `ai-evidence/session-01-scaffold.jsonl`
+ 
+#### Prompt strategy
+ 
+Used a structured prompt that:
+- Forced the agent to read `scope-doc.md` *before* acting (single biggest quality lever — without it, Claude Code produces plausible-but-off scaffolds)
+- Locked the stack explicitly so the agent wouldn't second-guess choices already made in Phase 2
+- Drew the scope line hard: scaffold + render only, no business logic
+- Gave permission to make trivial calls without asking ("decide and flag, don't ask me where to put the public CSV")
+- Required a structured handoff at the end (what works, what's decided, what surprised the agent, what to verify) — this is what makes the session loggable
+#### What the agent produced
+ 
+- `create-next-app` with TS, Tailwind, App Router, src dir, `@/*` alias
+- shadcn/ui initialized with `table`, `badge`, `input`, `select`, `button` components
+- `src/lib/types.ts` matching the scope doc data model exactly
+- `src/lib/data.ts` — papaparse-based CSV loader that fetches from `/sample_data.csv`, groups flat rows by `application_id` into `Application[]`
+- `src/app/page.tsx` — client component, table of all 60 applications, columns for business, borrower, processor, loan amount, application date, and a "X received / Y pending" doc count cell
+- Zero TypeScript errors, dev server serving the table
+#### Decisions the agent made (and surfaced)
+ 
+- **CSV in `public/` rather than read at build time via `fs`.** Reasoning: page is a client component (required so localStorage overrides can layer in next session), and a server-side read would force a server component, creating friction later. Tradeoff acknowledged: raw CSV is publicly served — fine for localhost, not a production pattern. **Accepted — defensible V1 call.**
+- **Doc-count formula:** `Received | Approved | Under Review` count as received; `Pending | Expired | Not Required` count as pending. **Need to verify this matches how the ops team thinks.** Will validate in Phase 2 session (stalled detection logic).
+#### What surprised the agent (and me, reviewing)
+ 
+- **Five applications have 8 documents, not 12.** The scope doc's "60 applications × 12 doc types" framing isn't quite accurate — the loader handles it gracefully, but the stalled-detection logic in the next session needs to operate on whatever's in `documents`, not assume a fixed count.
+- **`create-next-app` installed Next.js 16, not 14.** App Router API unchanged so nothing breaks; Turbopack is now the default. Benign. Scope doc says "Next.js 14" — leaving the doc as-is since the version isn't load-bearing.
+- **Tailwind v4 + shadcn v4** use CSS-based config (no `tailwind.config.js`). Worth knowing if I look up older docs and something looks different.
+#### My critical engagement
+ 
+- Reviewed the generated `data.ts` before continuing — the grouping logic correctly handles the partial-doc applications. Would have caught it in the next session anyway when stalled detection ran into edge cases, but the agent flagging it proactively saved a debug cycle.
+- Eyeballed the rendered table in browser to verify it's not just a passing HTTP response. A 200 from `curl` is not the same as a working render.
+- Deferred the doc-count-formula validation to the next session, where I'll be writing the stalled-detection rules anyway and the categorization needs to be locked in coherently across both features.
+#### What I'm doing before the next session
+ 
+1. Browser-verify the table renders 60 rows correctly
+2. Export Claude Code session log to `ai-evidence/`
+3. Commit the scaffold
+4. Take a short break before the highest-leverage build session
  
 ---
  
