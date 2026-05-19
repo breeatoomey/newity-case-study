@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { differenceInDays, parseISO } from "date-fns";
 import { loadApplications } from "@/lib/data";
-import { deriveStatus, REFERENCE_NOW } from "@/lib/derived";
+import { deriveStatus, REFERENCE_NOW, urgencyTier } from "@/lib/derived";
 import { setDocOverride } from "@/lib/storage";
 import type { Application, Document, DocumentStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -40,16 +40,6 @@ function formatCurrency(n: number): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(n);
-}
-
-type UrgencyTier = "none" | "default" | "amber" | "red";
-
-function urgencyTier(expirationDate: string | null, now: Date): UrgencyTier {
-  if (!expirationDate) return "none";
-  const days = differenceInDays(parseISO(expirationDate), now);
-  if (days < 30) return "red";
-  if (days <= 90) return "amber";
-  return "default";
 }
 
 function formatExpiration(expirationDate: string | null, now: Date): string {

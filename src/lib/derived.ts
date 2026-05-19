@@ -1,5 +1,5 @@
-import { differenceInDays, parseISO } from "date-fns";
-import type { Application, DerivedApplicationStatus } from "@/lib/types";
+import { addDays, differenceInDays, parseISO } from "date-fns";
+import type { Application, DerivedApplicationStatus, Document } from "@/lib/types";
 
 // The sample CSV is a fixed snapshot from early 2026 (most recent app: 2026-01-29).
 // Against `new Date()` every app trips the staleness thresholds and the Stalled
@@ -7,7 +7,11 @@ import type { Application, DerivedApplicationStatus } from "@/lib/types";
 // most recent application_date — the earliest coherent anchor — which maximizes
 // the variation in the stalled signal across the dataset.
 // In production with live data, replace with `new Date()`.
-export const REFERENCE_NOW = new Date("2026-01-30");
+// Constructed via (year, monthIndex, day) so the date anchors to local midnight,
+// not UTC midnight. With UTC parsing, `format(REFERENCE_NOW, "MMMM d, yyyy")`
+// renders the previous day for any viewer west of UTC. Stalled counts are
+// unchanged — differenceInDays measures full 24h periods.
+export const REFERENCE_NOW = new Date(2026, 0, 30);
 
 const RECEIVED_STATUSES = new Set(["Received", "Approved", "Under Review"]);
 const PENDING_STATUSES = new Set(["Pending", "Expired"]);
@@ -82,4 +86,47 @@ export function deriveStatus(
     stalledReasons,
     expiringSoonCount: 0,
   };
+}
+
+// Tier of a document's expiration urgency. Shared between the detail view (per
+// doc cell) and the expiring-soon list. Tier thresholds intentionally live here
+// — duplicating them in two views invites drift the next time someone tunes
+// what counts as "urgent".
+export type UrgencyTier = "none" | "default" | "amber" | "red";
+
+export function urgencyTier(expirationDate: string | null, now: Date): UrgencyTier {
+  if (!expirationDate) return "none";
+  const days = differenceInDays(parseISO(expirationDate), now);
+  if (days < 30) return "red";
+  if (days <= 90) return "amber";
+  return "default";
+}
+
+// Cross-application selection for the expiring-soon view. Includes any doc
+// with a populated expiration_date that is on or before `now + daysAhead`.
+// Already-expired docs are included (no lower bound). Status is intentionally
+// ignored — an Approved doc expiring in 5 days still belongs on the list.
+// Returns rows sorted by expiration_date ascending: most overdue first, then
+// expiring soonest. Used by both the expiring-soon page and the list-view
+// header count, so both stay in sync.
+export type ExpiringEntry = { app: Application; doc: Document };
+
+export function selectExpiringDocs(
+  apps: Application[],
+  now: Date = new Date(),
+  daysAhead: number = 30
+): ExpiringEntry[] {
+  const cutoff = addDays(now, daysAhead);
+  const out: ExpiringEntry[] = [];
+  for (const app of apps) {
+    for (const doc of app.documents) {
+      if (!doc.expirationDate) continue;
+      if (parseISO(doc.expirationDate) <= cutoff) {
+        out.push({ app, doc });
+      }
+    }
+  }
+  return out.sort((a, b) =>
+    a.doc.expirationDate!.localeCompare(b.doc.expirationDate!)
+  );
 }

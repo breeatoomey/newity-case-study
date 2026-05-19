@@ -153,12 +153,136 @@ Used a structured prompt that:
 - Reviewed the generated `data.ts` before continuing — the grouping logic correctly handles the partial-doc applications. Would have caught it in the next session anyway when stalled detection ran into edge cases, but the agent flagging it proactively saved a debug cycle.
 - Eyeballed the rendered table in browser to verify it's not just a passing HTTP response. A 200 from `curl` is not the same as a working render.
 - Deferred the doc-count-formula validation to the next session, where I'll be writing the stalled-detection rules anyway and the categorization needs to be locked in coherently across both features.
-#### What I'm doing before the next session
+#### What I'm doing before the next segment
  
 1. Browser-verify the table renders 60 rows correctly
 2. Export Claude Code session log to `ai-evidence/`
 3. Commit the scaffold
-4. Take a short break before the highest-leverage build session
+4. Take a short break before the highest-leverage build segment
+
+### Build segment 2: List view with stalled detection
+ 
+**Tool:** Claude Code
+**Duration:** ~50 minutes (build + debug + fix)
+**Raw transcript:** Same Claude Code session as segment 1; exported at end of build to `ai-evidence/build-session.jsonl`
+ 
+#### Prompt strategy
+ 
+This was the highest-leverage feature of the build — the north-star view from the scope doc. Three things baked into the prompt that paid off:
+ 
+- **Locked the categorization rules exhaustively.** "Under Review counts as received for the completeness gauge, but trips stalled-detection when aging. Same data, two different questions, two different answers — explain this in code comments." Without this lock, the agent would have made a reasonable but different call, and I'd have spent rework time on it.
+- **Built in a trip-wire for sanity-checking.** "Tell me the stalled count out of 60 — gut-check whether it feels right. If it's 55/60, something is too aggressive; if it's 2/60, something is too lenient." This forced the agent to validate the output against an external standard, not just confirm the code compiles.
+- **Specified the default sort order explicitly** ("stalled first, then by application_date descending"). Defaults are product decisions disguised as engineering ones — leaving them implicit means the agent picks whatever Tailwind table examples it saw most.
+#### What the agent produced (first pass)
+ 
+- `DerivedApplicationStatus` type added to `types.ts`
+- `src/lib/derived.ts` — computes completeness, stalled status, and human-readable reasons per application
+- `src/app/page.tsx` refactored into a real list view: header with stalled count, filter chips ([All]/[Stalled only] and per-processor), completeness column with progress bar + percentage + color tiers, stalled badge with reasons
+- Zero TypeScript errors, dev server serving the list view
+#### The 60/60 problem and how it got solved
+ 
+The trip-wire fired. Initial stalled count: **60 of 60** — the Stalled filter was equivalent to the All filter. Three things made this a useful debug moment, not a derailment:
+ 
+1. **The agent surfaced it proactively** rather than letting me discover it in the browser. The sanity-check script ran before the report. This is what good prompting buys you.
+2. **The agent did exploratory data analysis without being asked.** It computed the stalled count at multiple anchor dates, ran a separate script to investigate the Expired-doc semantics, and surfaced that 27 of 37 Expired docs in the data have no `expiration_date` populated. That data oddity turned out to be the key insight.
+3. **The agent presented four options with tradeoffs** instead of unilaterally picking one. Three were defensible; one (gaming the anchor to a date earlier than the most recent application) wasn't, and the agent flagged it as incoherent.
+The root cause: the sample data is a snapshot from early 2026. Against today's real date (May 2026), every application is past the 14-day Pending threshold. The locked rules + the data + the real clock compound into a 100% stalled rate.
+ 
+#### My critical engagement on the fix
+ 
+Three decisions I made that weren't in the original spec:
+ 
+- **Adopted the Expired-date sanity check** (require `expiration_date <= now` for Expired status to count). My read: this isn't a threshold change, it's a data-quality refinement of an implicit assumption. The original rule said "any Expired doc is stalled," which implicitly assumed Expired status reflected a real expiration event. The data shows that assumption doesn't hold. Tightening to require the actual evidence is engineering judgment based on what the data revealed, which is exactly what the brief asks for.
+- **Set `REFERENCE_NOW = 2026-01-30`.** Earliest coherent anchor (one day after the most recent application_date), which maximizes variation in the stalled signal without making "now" precede applications that have already been filed. Documented in code with a comment explaining why this exists and that production would use `new Date()`.
+- **Walked back my own target range.** The original "20-45 stalled out of 60" target I set was based on incomplete data analysis. Once the floor became visible (~26 from Expired alone, ~52 from Pending), I reframed expectations honestly rather than gaming the rules to hit a vanity number. Final count: 56/60 stalled, 4 on-track.
+#### Why the final state is the right state
+ 
+56/60 stalled isn't a clean demo number, but it's the honest one. The four on-track apps are all recent (4–11 days from anchor), which is exactly when the rules should *not* fire — the borrower hasn't had time to send things in yet. The rule is doing what it's supposed to.
+ 
+This is also a stronger demo narrative than a manufactured 30/60 would have been: *"This is the team's pain point in numerical form — almost every active application has something requiring attention. The 4 on-track apps are the ones a processor doesn't need to worry about today. V2 turns this binary 'stalled' flag into a severity tier so a 90-day-pending doc isn't visually equivalent to a 15-day-pending one."*
+ 
+#### What surprised me about the data (worth telling the team)
+ 
+- **Most Expired docs aren't really expired.** 27 of 37 Expired-status docs have no expiration date. Either someone hand-flagged them for non-expiration reasons (revoked, superseded, invalid?) or the data is noisy. Either way, the team should know — the Expired status is being used as a catch-all in their current spreadsheet workflow. V2 could split this into proper sub-statuses.
+- **Five applications have only 8 docs, not 12.** Confirmed in segment 1; the completeness gauge handles it correctly (denominator from actual doc count, not hardcoded 12), but the data tells me the "12 required documents" framing isn't universally applied yet.
+- **Three on-track apps belong to Ricardo Fuentes; one to Aisha; zero to Janet.** Janet's caseload is 18/18 stalled — entirely. Worth surfacing if I had a real conversation with the team: is this a workload imbalance, a process difference, or noise in the sample?
+#### Future-date artifact (flagged for next segment)
+ 
+The 2026-01-30 anchor means some `date_received` values in the data are after "now." Not visible in the list view (no `date_received` column), but the detail view will show this. Mitigated in the segment 3 prompt: any `date_received > REFERENCE_NOW` will render as "Not yet received" in the detail view UI. Underlying data untouched.
+ 
+#### What I'm doing before the next session
+ 
+1. Browser-verified the list view renders correctly with 56 stalled, 4 on-track
+2. Committed the segment with message "Build segment 2: list view with stalled detection (56/60 stalled at 2026-01-30 anchor)"
+3. Declined to add an "On-track only" filter mid-build despite the apparent symmetry with "Stalled only" — the team's pain point is finding stalled apps, not healthy ones, and the on-track apps are already accessible at the bottom of the default sort. Documenting this as an explicit cut, not an oversight.
+
+### Build segment 3: Detail view with inline editing + localStorage persistence
+ 
+**Tool:** Claude Code
+**Duration:** ~50 minutes
+**Raw transcript:** Same Claude Code session as segments 1 and 2; exported at end of build to `ai-evidence/build-session.jsonl`
+ 
+#### Prompt strategy
+ 
+This segment had more moving pieces than the previous two — a new route, a new persistence layer, an update to the existing data loader, and navigation wiring — so the prompt was correspondingly more structured. Three things baked in that paid off:
+ 
+- **Specified the localStorage layer as its own module** (`src/lib/storage.ts`) rather than letting the agent inline it into the page. Isolating it makes it testable, swappable with a real backend in V2, and keeps the rest of the app oblivious to storage details.
+- **Pre-empted the future-date artifact.** The 2026-01-30 reference date means some `date_received` values in the data are after "now" — not visible in the list view but problematic in the detail view. Specified "render as 'Not yet received' if date_received > REFERENCE_NOW" directly in the prompt so it didn't get missed.
+- **Required an integration spot-check.** Asked the agent to simulate a status edit on an on-track app and report what happens to completeness and stalled status. This is what proves the override merge propagates correctly through the data layer to the derived state — far more useful than verifying that types compile.
+#### What the agent produced
+ 
+- `src/lib/storage.ts` — localStorage wrapper with try/catch fallback for private-browsing/unavailable cases. Synchronous API with `getOverrides()`, `setDocOverride()`, `clearOverrides()`.
+- `src/lib/data.ts` updated — CSV defaults merged with localStorage overrides during load. Single namespace key (`newity-doc-checklist-v1`) holds a flat `{ [docId]: { status?, notes? } }` map.
+- `src/app/applications/[id]/page.tsx` — full detail view with header (business name, metadata row, stalled badge with reasons, completeness stat), table of all docs, inline status dropdowns, inline notes inputs, expiration dates with three-tier visual urgency.
+- List-view row click wired to `router.push('/applications/${app.id}')`.
+- 404-style empty state if the URL ID doesn't match an application.
+Type-checked clean. All three routes (`/`, `/applications/[id]`, missing-ID fallback) return 200.
+ 
+#### Decisions the agent made (and surfaced)
+ 
+- **Breaking doc-ID change.** Old loader generated unstable IDs based on global row index (`${appId}-doc-${idx}`). New format is `${appId}-${documentType}`, which is stable across CSV reorderings. Agent flagged it as a breaking change but correctly noted there's no existing localStorage data to migrate since this is the first segment to write any. **Accepted — this is the right key shape for the persistence layer.**
+- **Notes whitespace handling.** `notes.trim() || null` on save. Whitespace-only input clears the note rather than persisting visually-empty content. Avoids the "did my note save?" UX confusion.
+- **Override notes shape: `string | null`.** Null is explicit "cleared by user" — distinguished from "not set" in the merge logic via `"notes" in override`. This means a user can deliberately remove a CSV-provided note and have that override stick. Small but correct semantic choice.
+- **Did not add a "Saved" flash.** The status dropdown shows the new value instantly; the notes input retains the typed text. Both are inherent confirmation. Adding a flash would be decorative complexity for marginal benefit.
+- **Visual urgency: color + dot, not color alone.** Three tiers (red <30d/expired, amber 30-90d, green >90d, no dot when no expiration). The dot is additive because color alone fails for colorblind users.
+- **No `Card` component.** Used semantic divs and borders for the header section. Card would be one more shadcn install for a layout this simple.
+- **Used `use(params)` to unwrap.** Next.js 16 makes `params` a Promise even in client components; `use()` is the documented unwrap path. Correct API for the version.
+#### My critical engagement
+ 
+The biggest judgment call this segment was about the **future-date artifact** — and specifically, deciding what *not* to build to solve it.
+ 
+The artifact: with `REFERENCE_NOW = 2026-01-30`, 90 of 620 doc rows (~14.5%) have `date_received` values in the future relative to "now." Most visibly, this creates rows where the status reads "Received" but the date column reads "Not yet received." Internally consistent (the system thinks the doc hasn't been received yet by the reference date), but visually awkward.
+ 
+Three options I considered:
+ 
+1. **Move the reference date forward** to eliminate future-dated `date_received` values. Pushing to ~2026-02-12 would do it but eliminates all 4 on-track applications, leaving the Stalled filter functionally equivalent to the All filter. Worse trade-off than the artifact.
+2. **Build a date picker** to let the user pick "now." Tempting because it makes the limitation disappear, but: it's solving a development-time problem with a user-facing feature, it's explicit scope creep against the V1 scope doc, and it suggests I couldn't make a clean engineering judgment myself — which is the opposite of the signal I want to send.
+3. **Keep the current anchor, surface the trade-off explicitly.** Add one line of muted text to the list-view header making the reference date visible to viewers ("Reference date: January 30, 2026 — sample data is a snapshot"), and explain the trade-off in 25 seconds during the demo.
+**Picked option 3.** The decision is well-reasoned, the artifact is bounded (14.5% of rows, mostly invisible unless you drill into a stalled app's details), and the demo narration turns it into evidence of engineering judgment rather than a flaw to hide.
+ 
+#### Spot-check result
+ 
+Asked the agent to simulate marking "Business Licenses & Permits" as Received on GreenLeaf Landscaping (one of the 4 on-track apps) and report the effect. Result chained cleanly:
+ 
+| State | Received | Pending | % | Stalled |
+|---|---|---|---|---|
+| Before any edit | 3 | 6 | 33% | no |
+| After 1 edit | 4 | 5 | 44% | no |
+| After all Pending → Received | 9 | 0 | 100% | no |
+ 
+Stays on-track throughout because the app is only 4 days old at the reference date — too young for the 14-day Pending threshold to fire even at 6 pending docs. Completeness climbs predictably. This proves the override layer wires correctly through the data loader → derived state → UI.
+ 
+#### Data weirdness worth knowing about
+ 
+- **90 of 620 docs (~14.5%) have `date_received` > REFERENCE_NOW** and will display as "Not yet received." Breakdown by status: 37 Received, 32 Approved, 14 Under Review, 7 Expired.
+- **The 7 Expired-with-future-date_received rows** are the oddest case in the data — "received in the future, then expired." Almost certainly noise from however the sample data was generated. The tightened Expired rule from segment 2 (requires `expiration_date ≤ now`) means these don't trip stalled detection regardless, but they'll look strange if a user opens one and sees Status=Expired + Received="Not yet received" + an expiration date.
+- **The combination matters for demo narration.** Worth a one-line acknowledgment during the demo: *"You'll see a few rows where the status disagrees with the date — that's an artifact of fixed-reference-date evaluation against snapshot data."*
+
+#### What I'm doing before the next segment
+ 
+1. Browser sanity-check the three things that prove localStorage actually works end-to-end: edit a status → refresh → still there; edit a status → back to list → completeness reflects change; DevTools confirms the JSON shape under `newity-doc-checklist-v1`.
+2. Added a one-line reference-date indicator to the list view header so the snapshot framing is visible to anyone using the app (not just discoverable through the demo narration).
+3. Commit before moving to the expiring-soon view.
  
 ---
  

@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { format } from "date-fns";
 import { loadApplications } from "@/lib/data";
-import { deriveStatus, REFERENCE_NOW } from "@/lib/derived";
+import { deriveStatus, REFERENCE_NOW, selectExpiringDocs } from "@/lib/derived";
 import type { Application, DerivedApplicationStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -59,6 +61,11 @@ export default function Home() {
     [rows]
   );
 
+  const expiringCount = useMemo(
+    () => selectExpiringDocs(apps, REFERENCE_NOW, 30).length,
+    [apps]
+  );
+
   const visibleRows = useMemo(() => {
     const filtered = rows.filter((r) => {
       if (stalledFilter === "stalled" && !r.derived.isStalled) return false;
@@ -93,12 +100,23 @@ export default function Home() {
 
   return (
     <main className="p-8 max-w-7xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">SBA Document Checklist</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {apps.length} applications ·{" "}
-          <span className="text-destructive font-medium">{stalledCount} stalled</span>
-        </p>
+      <header className="mb-6 flex flex-wrap justify-between items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">SBA Document Checklist</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {apps.length} applications ·{" "}
+            <span className="text-destructive font-medium">{stalledCount} stalled</span>
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Reference date: {format(REFERENCE_NOW, "MMMM d, yyyy")} (sample data is a snapshot)
+          </p>
+        </div>
+        <Link
+          href="/expiring-soon"
+          className={buttonVariants({ variant: "outline" })}
+        >
+          Expiring soon ({expiringCount})
+        </Link>
       </header>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
