@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { loadApplications } from "@/lib/data";
 import { deriveStatus, REFERENCE_NOW } from "@/lib/derived";
 import type { Application, DerivedApplicationStatus } from "@/lib/types";
@@ -29,6 +30,7 @@ function formatCurrency(amount: number): string {
 type Row = { app: Application; derived: DerivedApplicationStatus };
 
 export default function Home() {
+  const router = useRouter();
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export default function Home() {
               return (
                 <TableRow
                   key={app.id}
-                  onClick={() => console.log(app.id)}
+                  onClick={() => router.push(`/applications/${app.id}`)}
                   className="cursor-pointer"
                 >
                   <TableCell className="font-medium">{app.businessName}</TableCell>

@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import type { Application, Document, DocumentStatus } from "@/lib/types";
+import { getOverrides } from "@/lib/storage";
 
 type CsvRow = {
   application_id: string;
@@ -24,9 +25,10 @@ export async function loadApplications(): Promise<Application[]> {
     skipEmptyLines: true,
   });
 
+  const overrides = getOverrides();
   const appMap = new Map<string, Application>();
 
-  data.forEach((row, index) => {
+  for (const row of data) {
     const appId = row.application_id;
 
     if (!appMap.has(appId)) {
@@ -41,18 +43,22 @@ export async function loadApplications(): Promise<Application[]> {
       });
     }
 
+    const docId = `${appId}-${row.document_type}`;
+    const override = overrides[docId];
+
     const doc: Document = {
-      id: `${appId}-doc-${index}`,
+      id: docId,
       applicationId: appId,
       documentType: row.document_type,
-      status: row.document_status as DocumentStatus,
+      status: (override?.status ?? row.document_status) as DocumentStatus,
       dateReceived: row.date_received || null,
       expirationDate: row.expiration_date || null,
-      notes: row.notes || null,
+      // override.notes can be null (explicit clear) — use `in` check to distinguish from absent
+      notes: override && "notes" in override ? (override.notes ?? null) : (row.notes || null),
     };
 
     appMap.get(appId)!.documents.push(doc);
-  });
+  }
 
   return Array.from(appMap.values());
 }
