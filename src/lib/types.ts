@@ -28,6 +28,8 @@ export type Application = {
 
 export type DerivedApplicationStatus = {
   completeness: number;
+  receivedCount: number;
+  pendingCount: number;
   isStalled: boolean;
   stalledReasons: string[];
   expiringSoonCount: number;

@@ -117,11 +117,11 @@ Three jobs, in order:
  
 ## Phase 3: Building
  
-### Session 1: Scaffold + raw table render
+### Build segment 1: Scaffold + raw table render
  
 **Tool:** Claude Code
 **Duration:** ~30 minutes
-**Raw transcript:** `ai-evidence/session-01-scaffold.jsonl`
+**Raw transcript:** Single Claude Code session covering all build segments; exported at end of build to ai-evidence/build-session.jsonl
  
 #### Prompt strategy
  
