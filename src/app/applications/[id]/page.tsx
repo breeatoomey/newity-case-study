@@ -50,10 +50,8 @@ function formatExpiration(expirationDate: string | null, now: Date): string {
   return `${expirationDate} (${days} days)`;
 }
 
-function formatDateReceived(dateReceived: string | null, now: Date): string {
-  if (!dateReceived) return "—";
-  if (differenceInDays(parseISO(dateReceived), now) > 0) return "Not yet received";
-  return dateReceived;
+function formatDateReceived(dateReceived: string | null): string {
+  return dateReceived ?? "—";
 }
 
 export default function ApplicationDetail({
@@ -224,7 +222,7 @@ function DocRow({
         </Select>
       </TableCell>
       <TableCell className="tabular-nums align-middle text-muted-foreground">
-        {formatDateReceived(doc.dateReceived, REFERENCE_NOW)}
+        {formatDateReceived(doc.dateReceived)}
       </TableCell>
       <TableCell className={`tabular-nums align-middle ${tierClass}`}>
         <span className="inline-flex items-center gap-2">
