@@ -1,6 +1,6 @@
 # SBA Document Pipeline Tool
 
-A browser-based tool that replaces a shared spreadsheet for tracking SBA Document Pipelines across active loan applications. Built for the NEWITY Product Engineer assessment.
+A browser-based tool for the NEWITY loan operations team to track SBA Document Pipelines across active loan applications. Replaces a shared spreadsheet with a stalled-application surfacing tool focused on what the team actually struggles with.
 
 The team's stated pain point — *"not knowing which applications are stalled waiting on documents; things fall through the cracks"* — is the north star. Every design decision in V1 traces back to this.
 
@@ -39,7 +39,7 @@ Four routes, all server-rendered shells with client-side data loading from `publ
 
 **Application list (`/`).** All 60 applications in a sortable, filterable table. Defaults to stalled-first, then application date descending — the team-lead's triage need is on top by default. Filter chips for "Stalled only" and per-processor. Each row shows a completeness gauge (received vs pending docs, percentage, color-tiered bar) and a stalled badge with human-readable reasons ("5 docs pending >14d · 1 expired doc").
 
-**Application detail (`/applications/[id]`).** Drill into a single application. Inline-editable status dropdowns and notes inputs. Display-only date received (with future-date masking) and expiration date (with three-tier visual urgency). All edits persist to `localStorage` and propagate back to the list view.
+**Application detail (`/applications/[id]`).** Drill into a single application. Inline-editable status dropdowns and notes inputs. Display-only date received and expiration date (with three-tier visual urgency). All edits persist to `localStorage` and propagate back to the list view.
 
 **Expiring soon (`/expiring-soon`).** Cross-application triage of every document expiring in the next 30 days or already expired. Selection is driven by `expiration_date`, not status — so an Approved doc expiring in 5 days still appears here. That's the whole point.
 
@@ -47,7 +47,7 @@ Four routes, all server-rendered shells with client-side data loading from `publ
 
 `/dashboard` was explicitly cut from V1 in the scope doc ("separate user with separate needs, V2 work") and reintroduced as a documented adjustment after V1 was feature-complete. The underlying derived-state layer was already doing the aggregation; the dashboard just composes existing helpers. The original cut — the *weekly auto-generated email* — stays cut as a V2 item.
 
-See `scope-doc.md` "Scope adjustments during build" for the honest record.
+See `scope-doc.md` "Scope adjustments during build" for the full record.
 
 ---
 
@@ -72,7 +72,7 @@ The sample data is a snapshot from early 2026. The most recent `application_date
 
 To preserve variation in the data, `REFERENCE_NOW` is set to `2026-01-30` (one day after the most recent application) in `src/lib/derived.ts`. In production this would be `new Date()`. The current state: **56 of 60 applications stalled, 4 on-track.**
 
-This is a deliberate trade-off. See the demo video and `scope-doc.md` for the full reasoning.
+This is a deliberate trade-off — the alternatives (moving the reference forward, building a date picker) either flatten the demo to a 60/60 stalled rate or introduce scope creep against V1. The current anchor is the earliest coherent one that preserves variation.
 
 ---
 
@@ -97,7 +97,7 @@ A few decisions that aren't obvious from reading the code:
 ### What's solid
 
 - **Scope discipline.** Three V1 views shipped against the scope doc. One scope adjustment (the dashboard) documented as an explicit adjustment, not a silent rewrite. One feature (the "data quality" callout) prototyped during build and deliberately cut before submission because the label overpromised what the code did. The full arc is captured in `ai-log.md`.
-- **Engineering judgment surfaced from the data.** The 27-of-37 finding about Expired status (data-quality refinement of the stalled rule), the Bank-Statements-only insight in the expiring-soon view (reframes what the view is for), the Janet-Morrison-is-100%-stalled signal (workload visibility the current spreadsheet can't produce) — these came out of building, not before. Each is documented in the AI log and serves the demo.
+- **Engineering judgment surfaced from the data.** The 27-of-37 finding about Expired status (data-quality refinement of the stalled rule), the Bank-Statements-only insight in the expiring-soon view (reframes what the view is for), the Janet-Morrison-is-100%-stalled signal (workload visibility the current spreadsheet can't produce) — these came out of building, not before.
 - **Test coverage on the high-value logic.** 22 tests on the pure-function rules (`deriveStatus`, `urgencyTier`, `selectExpiringDocs`), including explicit boundary pins on day-30 and day-90 thresholds with comments explaining the implementation choices. The test file reads as executable spec for the rules.
 - **Clean derived-state layer.** Stalled detection, urgency tiers, and the expiring-soon selector are pure functions with no React entanglement. Same logic powers four views without duplication. The dashboard was a ~18-minute build because the data layer was already doing the work.
 
@@ -108,7 +108,6 @@ A few decisions that aren't obvious from reading the code:
 - **`REFERENCE_NOW` is a constant for sample-data evaluation.** Production needs `new Date()`. This is deliberate and documented, but it's also a real artifact of working against a snapshot.
 - **No accessibility audit.** Keyboard navigation works because shadcn/ui handles it, but I didn't verify screen-reader behavior, color contrast against WCAG AA, or focus management on edits.
 - **No audit log of status changes.** The detail view writes through to `localStorage` on every edit; there's no "changed by X at time Y" trail. The team lead will eventually want one.
-- **Demo data shows artifacts of the snapshot.** A small number of rows show "Received" status but "Not yet received" date — internally consistent but visually confusing. Surfaced in the demo narrative rather than papered over.
 - **Tied tiebreaker in the dashboard.** Three applications tie at 8 stalled docs in the "top 5 most overdue" list. They sort in CSV order. A stable secondary sort (older application date first) is the obvious V2 fix.
 
 ### What I'd build next
@@ -175,7 +174,7 @@ Before shipping to the loan-ops team, the testing plan beyond the unit suite:
 ```
 .
 ├── README.md                          ← this file
-├── scope-doc.md                       ← original scope + adjustments
+├── scope-doc.md                       ← scope decisions and adjustments
 ├── ai-log.md                          ← AI usage across all phases
 ├── ai-evidence/
 │   └── build-session.jsonl            ← Claude Code session transcript
@@ -197,17 +196,3 @@ Before shipping to the loan-ops team, the testing plan beyond the unit suite:
     │   └── derived.test.ts            ← 22-test vitest suite
     └── components/ui/                 ← shadcn/ui components
 ```
-
----
-
-## Deliverables
-
-Three deliverables for the assessment:
-
-1. **This code repository** — `git clone`, `npm install`, `npm run dev`.
-2. **Demo video** — 5-10 minute screen recording covering what the tool does, the scope decisions made, the testing approach, an honest self-assessment, and what would come next.
-3. **AI usage log** — see `ai-log.md`. Documents AI usage across Understanding, Scoping & Planning, Building, Testing, and Documentation phases. Raw Claude Code session transcript in `ai-evidence/build-session.jsonl`.
-
----
-
-*Built for NEWITY's Product Engineer assessment. ~4 hours total against a 4-hour cap.*
