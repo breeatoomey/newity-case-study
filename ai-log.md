@@ -94,7 +94,7 @@ Places I challenged the AI's framing and either accepted, modified, or overrode:
 
 ### Prompt
 
-> Based on the Phase 1 analysis we just did, co-draft a one-page scope doc with me. Structure I want: the problem statement (in the team's own words where possible), a single north-star user goal, the V1 feature list in priority order, an explicit cut-list with V2 framing for each cut, tech stack with one-line reasoning per choice, the data model in TypeScript, a time plan with a fallback if I run over, and a draft self-assessment I can refine after building. Be specific — no vague language. If a feature is in V1, define exactly what it does in 2-3 bullets. If it's cut, give me the actual reason and what V2 would look like.
+> Based on the Phase 1 analysis we just did, co-draft a one-page scope doc with me. Structure I want: the problem statement (in the team's own words where possible), a single north-star user goal, the V1 feature list in priority order, an explicit cut-list with V2 framing for each cut, tech stack with one-line reasoning per choice, the data model in TypeScript, a time plan with a fallback if I run over, and a draft self-assessment I can refine after building. Be specific, no vague language. If a feature is in V1, define exactly what it does in 2-3 bullets. If it's cut, give me the actual reason and what V2 would look like.
 
 ### Co-drafting process
 
