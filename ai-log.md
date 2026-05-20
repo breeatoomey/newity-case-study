@@ -10,78 +10,73 @@ This log captures intentional AI usage across each phase of the assessment — U
 
 **Date:** 05/17/2026
 **Tool:** Claude (web)
-**Goal:** Before writing any code, interrogate the brief itself — what is actually being tested, what's the highest-leverage scope, and what are the failure modes.
+**Goal:** Before writing any code, develop a clear understanding of the team's workflow problem, identify the highest-leverage features for solving it, and explore the shape of the sample data.
 
 ### Prompt
 
-> I'm starting a 3–4 hour take-home for a Product Engineer role at a fintech that facilitates SBA loans. The deliverable is a browser-based tool replacing a shared spreadsheet their loan ops team uses to track SBA document checklists. I've attached the full brief and the sample CSV (~620 rows, 60 applications × 12 document types).
+> I'm building a browser-based tool to replace a shared spreadsheet that the loan operations team uses to track SBA document checklists. I've attached the brief and the sample CSV (~620 rows, 60 applications × 12 document types). Build time available is roughly 3–4 hours.
 >
-> Before I write a single line of code, I want to use AI to interrogate the brief itself. Specifically:
-> 1. What is the assignment actually testing — beyond the surface feature list?
-> 2. The brief lists 5 requested features and explicitly says I can't build all of them. Which are the highest-leverage to build, and which should I cut? What's the reasoning?
-> 3. What are the failure modes — what would cause a strong candidate to bomb this?
-> 4. Walk me through the sample data so I understand the shape of the problem before I model it.
-> 5. Sketch a 4-hour time budget across the three phases (Build, Demo Video, AI Log).
+> Before I write a single line of code, I want to think through the problem itself. Specifically:
+>
+> 1. What's the actual workflow pain this team is experiencing? What's the underlying problem behind the surface feature requests?
+> 2. The brief lists 5 requested features. Which would deliver the most value to a 3-person ops team, and which are nice-to-haves vs. essentials?
+> 3. What does the sample data actually look like? What's the shape of the problem before I model it?
+> 4. What's a realistic time plan that leaves room for both building and clearly communicating what was built?
 >
 > Push back if my framing is off. I'd rather get an honest read now than discover gaps mid-build.
 
 ### Key insights from the AI response
 
-**The brief is a deliberate scope trap.** The line *"knowing when to stop is part of what we're evaluating"* and the explicit ban on going over 4 hours both signal that scope discipline is being graded as heavily as the build itself. A candidate who tries to ship all 5 requested features in 8 hours fails the assessment by definition.
+**The team's stated pain point is the north star.** Buried in the requirements Q&A: *"Not knowing which applications are stalled waiting on documents. Things fall through the cracks."* This reframes the product from "spreadsheet replacement" to "stalled application detector." Every feature decision should trace back to this pain — including the decision to *not* build features that don't directly attack it, even if they were explicitly requested.
 
-**The team's stated pain point is the north star.** Buried in the requirements Q&A: *"Not knowing which applications are stalled waiting on documents. Things fall through the cracks."* Any feature that doesn't directly attack this is lower priority. This reframes the build from "spreadsheet replacement" to "stalled application detector."
+**Three features deliver the most value to a 3-person ops team:**
 
-**Recommended scope — build:**
-1. Application list view with completeness + stalled-status indicators
-2. Application detail view — drill into all 12 doc types per application, update statuses inline, expiration dates rendered with visual urgency (red / yellow / green by days-until-expiry)
-3. Global expired / expiring-soon view — the team's expiration concern fused with the outstanding-items filter into a single triage surface
+1. **Application list view** with completeness and stalled-status indicators — the surface where processors see "what needs attention right now."
+2. **Application detail view** — drill into all 12 doc types per application, update statuses inline, expiration dates rendered with visual urgency (red / amber / green by days until expiry).
+3. **Global expired / expiring-soon view** — a triage surface that catches docs the team approved and then forgot about. The team's expiration concern fused with the outstanding-items filter into a single workflow.
 
-**Recommended scope — cut (and explain in demo):**
-- Email alerts — real email infra is a 2-hour rabbit hole (deliverability, templating, scheduling, suppression). V1 surfaces expiring items prominently in the UI instead.
-- Leadership dashboard / weekly summary auto-generation — separate user with separate needs (weekly cadence, aggregate view). V2 work.
-- Multi-user real-time sync — only 3 users, low concurrency risk. Optimistic local updates are enough for V1.
-- Auth / permissions — explicit non-goal in brief.
-- Persistence beyond `localStorage` — defensible V1: source of truth stays the spreadsheet, this tool is a productivity layer on top. V2 adds a backing store.
+**Lower-leverage requests, and why each is V2 work:**
 
-**Failure modes flagged:**
-- Over-scoping → blowing the 4-hour budget.
-- Building polished UI at the expense of clear product decisions (brief explicitly says polish isn't evaluated).
-- Treating the AI log as an afterthought (brief explicitly calls it the *most important deliverable*).
-- Claiming the tool is perfect in the self-assessment (brief explicitly calls this a red flag).
+- **Email alerts** — for a 3-user team, real email infra is high-cost: deliverability, templating, scheduling, suppression lists. Surfacing the same information prominently in the UI delivers the same outcome with much less complexity.
+- **Leadership dashboard / weekly summary auto-generation** — different user with different needs (weekly cadence, aggregate view). Trying to serve both the operational user and the leadership user in V1 means doing neither well.
+- **Multi-user real-time sync** — only 3 concurrent users. Optimistic local updates handle the actual collaboration need without the architectural cost of real-time infrastructure.
+- **Authentication / permissions** — explicit non-goal per the brief.
+- **Persistence beyond `localStorage`** — for V1, the spreadsheet remains the source of truth and this tool is a productivity layer on top of it. That framing is *more* defensible than a half-built real persistence layer.
 
 **Data shape (verified by AI inspecting the CSV):**
-- 620 rows, 60 applications, 12 doc types, 3 processors (Aisha Patel, Janet Morrison, Ricardo Fuentes), 6 statuses (Pending, Received, Under Review, Approved, Expired, Not Required)
-- ~78% of rows have no `expiration_date` (correct — most doc types don't expire; Bank Statements 90-day and Tax Returns 3-year are the expiry-relevant types per the brief)
-- ~34% of rows have notes
-- Data is clean — no nulls in required fields, no obvious junk rows
 
-**Time budget:**
+- 620 rows, 60 applications, 12 doc types, 3 processors (Aisha Patel, Janet Morrison, Ricardo Fuentes), 6 statuses (Pending, Received, Under Review, Approved, Expired, Not Required).
+- ~78% of rows have no `expiration_date` — correct, since most doc types don't expire. Bank Statements (90-day) and Tax Returns (3-year) are the only expiry-relevant doc types.
+- ~34% of rows have notes.
+- Data is clean — no nulls in required fields, no obvious junk rows.
+
+**Time plan:**
 
 | Block | Duration | Activity |
 |---|---|---|
 | 0:00–0:30 | 30 min | One-page scope doc + AI log skeleton |
 | 0:30–1:00 | 30 min | Scaffold project, define data model |
 | 1:00–2:45 | 1h 45m | Build the three core features |
-| 2:45–3:15 | 30 min | Polish, README, self-assessment write-up |
+| 2:45–3:15 | 30 min | README and self-assessment writeup |
 | 3:15–3:45 | 30 min | Record demo video |
 | 3:45–4:00 | 15 min | Buffer / final review / submit |
 
 ### My decisions
 
-- **Scope:** Accepting the recommended cut list. Building the three core features. Will defend cuts explicitly in the demo, framed against the team's stated pain point.
+- **Scope:** Building the three core features. The other requested items get clear V2 framing in the demo, tied back to the team's stated pain point.
 - **Stack:** Next.js + React + Tailwind + shadcn/ui, built in Claude Code with Claude in VS Code for side conversations. `papaparse` for CSV ingest. `localStorage` for in-session persistence. No backend.
-- **North-star feature:** The stalled-application surfacing. Everything else flows from this.
-- **Demo framing:** Stakeholder demo, not code review. Lead with the team's pain point quote, then trace each built feature back to it. Cuts get their own segment with reasoning.
-- **Self-assessment angle:** Be explicitly honest about what's fragile — localStorage means no real persistence, no concurrent-edit handling, single-user assumption baked in. Naming these is the point of the section.
+- **North-star feature:** The stalled-application surfacing. Every other feature flows from this.
+- **Demo framing:** Stakeholder presentation, not code review. Lead with the team's pain point in their own words, then trace each built feature back to it. Cuts get their own segment with reasoning.
+- **Self-assessment angle:** Be explicit about what's fragile — `localStorage` means no real persistence, no concurrent-edit handling, single-user assumption baked in. Naming these limitations honestly is more useful to the team than smoothing them over.
 
-### Pressure-testing the AI's recommendation
+### Pressure-testing the AI's recommendations
 
 Places I challenged the AI's framing and either accepted, modified, or overrode:
 
-- **Considered adding Firebase for persistence** (familiar from prior work). AI pushback: setup eats ~45 min for marginal V1 value, and "source of truth is the spreadsheet" is a more defensible V1 story than half-built real persistence. **Accepted.**
-- **Considered building the leadership dashboard as a 'free' feature** given the data shape. AI pushback: it's a separate user with separate needs (weekly cadence, aggregate view), and building it would dilute the operational-view focus. V2 framing is stronger than a half-built feature. **Accepted.**
-- **Considered writing automated tests.** Brief calls tests "a bonus" but says thinking about testing is required. Decision: write a QA plan section in the README and cover testing approach verbally in the demo, instead of spending build time on tests at the cost of scope. **My call — overrode the AI's leaning toward writing a minimal test suite.**
-- **Considered an inline edit UX vs. modal-based editing for status changes.** AI suggested modal; I'm going with inline because non-technical users move faster when there's no extra click and the spreadsheet they're replacing also edits in place. **My call.**
+- **Considered adding Firebase for persistence** (familiar from prior work). AI pushback: setup eats ~45 min for marginal V1 value, and "the spreadsheet remains the source of truth" is a more defensible product story than a half-built real persistence layer. **Accepted.**
+- **Considered building the leadership dashboard as a 'free' feature** given that the data shape would make aggregation easy. AI pushback: it serves a different user with different needs (weekly cadence, aggregate view), and trying to address two distinct users in V1 dilutes the operational focus. **Accepted.**
+- **Considered writing automated tests upfront.** Decision at this stage: prioritize getting V1 features in front of users over investing test coverage before the rules were even settled. Spending build time on tests upfront wasn't the right trade for V1. **My call — overrode the AI's leaning toward writing a minimal test suite.**
+- **Considered modal vs. inline editing for status changes.** AI suggested modal; I picked inline because the non-technical users moving from a spreadsheet expect in-place edits, and removing a click reduces friction for the team. **My call.**
 
 ---
 
