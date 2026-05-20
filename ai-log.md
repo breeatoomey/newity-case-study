@@ -357,7 +357,3 @@ Mapped to the spec’s three-phase structure:
 |Demo It           |Demo recording                                                                      |~15 min         |
 |Show Your Process |This AI log + scope-doc + README                                                    |~25 min         |
 |**Total**         |                                                                                    |**~4h 5m**      |
-
-Approximately five minutes over the 4-hour cap. The overrun lives in the build phase, specifically the data quality callout I prototyped and then cut (segment 6, ~22 min). The cut itself was the right call: shipping a half-built feature with an overpromising label was worse than the time it cost to revert. If I had that segment back, I’d use it on the loader integration test flagged as the V2 testing priority.
-
-The time budget held closer to plan because the scope held: three V1 views, one documented adjustment (dashboard), one feature built and cut (data quality callout), and a focused test suite.
