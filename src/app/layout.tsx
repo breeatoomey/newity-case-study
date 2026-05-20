@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SBA Document Checklist",
+  title: "SBA Document Pipeline",
   description: "Track SBA loan document checklists",
 };
 

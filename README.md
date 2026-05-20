@@ -1,6 +1,6 @@
-# SBA Document Checklist Tool
+# SBA Document Pipeline Tool
 
-A browser-based tool that replaces a shared spreadsheet for tracking SBA document checklists across active loan applications. Built for the NEWITY Product Engineer assessment.
+A browser-based tool that replaces a shared spreadsheet for tracking SBA Document Pipelines across active loan applications. Built for the NEWITY Product Engineer assessment.
 
 The team's stated pain point — *"not knowing which applications are stalled waiting on documents; things fall through the cracks"* — is the north star. Every design decision in V1 traces back to this.
 

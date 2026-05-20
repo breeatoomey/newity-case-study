@@ -14,7 +14,7 @@ This log captures intentional AI usage across each phase of the assessment — U
 
 ### Prompt
 
-> I'm starting a 3–4 hour take-home for a Product Engineer role at a fintech that facilitates SBA loans. The deliverable is a browser-based tool replacing a shared spreadsheet their loan ops team uses to track SBA document checklists. I've attached the full brief and the sample CSV (~620 rows, 60 applications × 12 document types).
+> I'm starting a 3–4 hour take-home for a Product Engineer role at a fintech that facilitates SBA loans. The deliverable is a browser-based tool replacing a shared spreadsheet their loan ops team uses to track SBA Document Pipelines. I've attached the full brief and the sample CSV (~620 rows, 60 applications × 12 document types).
 >
 > Before I write a single line of code, I want to use AI to interrogate the brief itself. Specifically:
 > 1. What is the assignment actually testing — beyond the surface feature list?

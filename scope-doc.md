@@ -1,4 +1,4 @@
-# Scope Doc — SBA Document Checklist Tool
+# Scope Doc — SBA Document Pipeline Tool
 
 **Author:** Breea Toomey
 **Assessment:** NEWITY Product Engineer take-home
@@ -8,7 +8,7 @@
 
 ## The Problem
 
-Loan ops at NEWITY tracks SBA document checklists for ~50–75 active applications in a shared spreadsheet. Each application requires up to 12 different document types. The team's biggest pain point — in their own words — is **"not knowing which applications are stalled waiting on documents. Things fall through the cracks."**
+Loan ops at NEWITY tracks SBA Document Pipelines for ~50–75 active applications in a shared spreadsheet. Each application requires up to 12 different document types. The team's biggest pain point — in their own words — is **"not knowing which applications are stalled waiting on documents. Things fall through the cracks."**
 
 Three people use the spreadsheet day-to-day: two loan processors and one team lead. None are technical. The team lead also compiles a weekly pipeline summary for leadership, manually, every Monday.
 

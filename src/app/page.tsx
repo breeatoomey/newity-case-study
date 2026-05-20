@@ -104,7 +104,7 @@ export default function Home() {
       <header className="mb-6">
         <div className="flex flex-wrap justify-between items-start gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">SBA Document Checklist</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">SBA Document Pipeline</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {apps.length} applications ·{" "}
               <span className="text-destructive font-medium">{stalledCount} stalled</span>
