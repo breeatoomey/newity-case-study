@@ -2,7 +2,7 @@
 
 Primary tools: Claude Code (build), Claude in VS Code via extension (side conversations, doc work, pressure-testing decisions).
 
-This log captures intentional AI usage across each phase of the assessment — Understanding, Scoping & Planning, Building, Testing, and Documentation. Each entry includes the prompt I gave, the substance of the AI response, and the decisions I made (including where I overrode AI recommendations).
+This log captures intentional AI usage across each phase of the work — Understanding, Scoping & Planning, Building, Testing, and Documentation. Each entry includes the prompt I gave, the substance of the AI response, and the decisions I made (including where I overrode AI recommendations).
 
 ---
 
@@ -75,7 +75,7 @@ Places I challenged the AI's framing and either accepted, modified, or overrode:
 
 - **Considered adding Firebase for persistence** (familiar from prior work). AI pushback: setup eats ~45 min for marginal V1 value, and "the spreadsheet remains the source of truth" is a more defensible product story than a half-built real persistence layer. **Accepted.**
 - **Considered building the leadership dashboard as a 'free' feature** given that the data shape would make aggregation easy. AI pushback: it serves a different user with different needs (weekly cadence, aggregate view), and trying to address two distinct users in V1 dilutes the operational focus. **Accepted.**
-- **Considered writing automated tests upfront.** Decision at this stage: prioritize getting V1 features in front of users over investing test coverage before the rules were even settled. Spending build time on tests upfront wasn't the right trade for V1. **My call — overrode the AI's leaning toward writing a minimal test suite.**
+- **Considered writing automated tests upfront.** Decision at this stage: prioritize getting V1 features working over investing in test coverage before the rules were even settled. Spending build time on tests upfront wasn't the right trade for V1. **My call — overrode the AI's leaning toward writing a minimal test suite.**
 - **Considered modal vs. inline editing for status changes.** AI suggested modal; I picked inline because the non-technical users moving from a spreadsheet expect in-place edits, and removing a click reduces friction for the team. **My call.**
 
 ---
@@ -95,11 +95,11 @@ Places I challenged the AI's framing and either accepted, modified, or overrode:
 
 Claude produced a first draft based on the Phase 1 decisions already on the table — the three core features, the cut list, the tech stack, the time budget. I worked through the draft section by section. The places where I changed or refined what came back:
 
-- **Stalled-application thresholds.** Draft suggested 7 days for `Pending`. I changed to 14 days for `Pending` and kept 7 days for `Under Review`. Reasoning: a doc that's been *requested* but not yet received takes longer in normal operations (waiting on the borrower); a doc that's been received and is under review should move faster (waiting on the processor). Two different SLAs.
+- **Stalled-application thresholds.** Draft suggested 7 days for `Pending`. I changed to 14 days for `Pending` and kept 7 days for `Under Review`. Reasoning: a doc that's been *requested* but not yet received takes longer in normal operations (waiting on the borrower); a doc that's been received and is under review should move faster (waiting on the processor). Two different SLAs for two different parts of the workflow.
 - **Inline vs. modal editing.** Draft offered both as options. Committed to inline-only — fewer clicks, closer to the spreadsheet mental model the team already has.
 - **Cut justification for the leadership dashboard.** Draft's reasoning was "different user, different needs." I sharpened to "different cadence" — leadership wants weekly aggregates, ops wants real-time operational view. Building both in 4 hours means doing neither well.
 - **Time-plan fallback.** Added the explicit rule for what gets cut if I'm behind at the 1:45 mark: expiring-soon view, not the detail view. Detail makes the tool *usable*; expiring-soon makes it *valuable*. Usable wins under time pressure.
-- **Self-assessment "rough" list.** Added the threshold-hardcoding and the single-user-assumption items myself. The honest fragility list is the section that matters most for the demo — wanted to make sure it reflected my actual technical concerns, not generic ones.
+- **Self-assessment "rough" list.** Added the threshold-hardcoding and the single-user-assumption items myself. An honest fragility list is more useful to a team than generic engineering caveats — wanted the list to reflect my actual technical concerns about this codebase.
 
 ### Decisions locked in
 
@@ -111,6 +111,7 @@ Claude produced a first draft based on the Phase 1 decisions already on the tabl
 ### What I'm using the scope doc for
 
 Three jobs, in order:
+
 1. **Anchor for the build** — when I'm tempted to add something mid-build, I check the doc first.
 2. **Source material for the README** — the "what's built," "what's cut," and "what's next" sections lift straight in.
 3. **Demo script backbone** — the demo follows the same arc as this doc: problem → north star → built features → cuts → V2.
@@ -123,16 +124,17 @@ Three jobs, in order:
 
 **Tool:** Claude Code
 **Duration:** ~30 minutes
-**Raw transcript:** Single Claude Code session covering all build segments; exported at end of build to ai-evidence/build-session.jsonl
+**Raw transcript:** Single Claude Code session covering all build segments; exported at end of build to `ai-evidence/build-session.jsonl`
 
 #### Prompt strategy
 
 Used a structured prompt that:
+
 - Forced the agent to read `scope-doc.md` *before* acting (single biggest quality lever — without it, Claude Code produces plausible-but-off scaffolds)
 - Locked the stack explicitly so the agent wouldn't second-guess choices already made in Phase 2
 - Drew the scope line hard: scaffold + render only, no business logic
 - Gave permission to make trivial calls without asking ("decide and flag, don't ask me where to put the public CSV")
-- Required a structured handoff at the end (what works, what's decided, what surprised the agent, what to verify) — this is what makes the session loggable
+- Required a structured handoff at the end (what works, what's decided, what surprised the agent, what to verify) — keeps the work loggable as I go
 
 #### What the agent produced
 
@@ -202,25 +204,25 @@ The root cause: the sample data is a snapshot from early 2026. Against today's r
 
 Three decisions I made that weren't in the original spec:
 
-- **Adopted the Expired-date sanity check** (require `expiration_date <= now` for Expired status to count). My read: this isn't a threshold change, it's a data-quality refinement of an implicit assumption. The original rule said "any Expired doc is stalled," which implicitly assumed Expired status reflected a real expiration event. The data shows that assumption doesn't hold. Tightening to require the actual evidence is engineering judgment based on what the data revealed, which is exactly what the brief asks for.
+- **Adopted the Expired-date sanity check** (require `expiration_date <= now` for Expired status to count). My read: this isn't a threshold change, it's a data-quality refinement of an implicit assumption. The original rule said "any Expired doc is stalled," which implicitly assumed Expired status reflected a real expiration event. The data shows that assumption doesn't hold. Tightening to require the actual evidence is engineering judgment based on what the data revealed — when the data contradicts an assumption baked into the rule, refining the rule is the right call.
 - **Set `REFERENCE_NOW = 2026-01-30`.** Earliest coherent anchor (one day after the most recent application_date), which maximizes variation in the stalled signal without making "now" precede applications that have already been filed. Documented in code with a comment explaining why this exists and that production would use `new Date()`.
-- **Walked back my own target range.** The original "20-45 stalled out of 60" target I set was based on incomplete data analysis. Once the floor became visible (~26 from Expired alone, ~52 from Pending), I reframed expectations honestly rather than gaming the rules to hit a vanity number. Final count: 56/60 stalled, 4 on-track.
+- **Walked back my own target range.** The original "20-45 stalled out of 60" target I set was based on incomplete data analysis. Once the floor became visible (~26 from Expired alone, ~52 from Pending), I reframed expectations honestly rather than reverse-engineering the rules to hit a target number. Final count: 56/60 stalled, 4 on-track.
 
 #### Why the final state is the right state
 
-56/60 stalled isn't a clean demo number, but it's the honest one. The four on-track apps are all recent (4–11 days from anchor), which is exactly when the rules should *not* fire — the borrower hasn't had time to send things in yet. The rule is doing what it's supposed to.
+56/60 stalled isn't a tidy number, but it's the honest one. The four on-track apps are all recent (4–11 days from anchor), which is exactly when the rules should *not* fire — the borrower hasn't had time to send things in yet. The rule is doing what it's supposed to.
 
-This is also a stronger demo narrative than a manufactured 30/60 would have been: *"This is the team's pain point in numerical form — almost every active application has something requiring attention. The 4 on-track apps are the ones a processor doesn't need to worry about today. V2 turns this binary 'stalled' flag into a severity tier so a 90-day-pending doc isn't visually equivalent to a 15-day-pending one."*
+This is also a more useful framing of the team's situation than a tidier 30/60 would have been: almost every active application has something requiring attention. The 4 on-track apps are the ones a processor doesn't need to worry about today. V2 turns this binary 'stalled' flag into a severity tier so a 90-day-pending doc isn't visually equivalent to a 15-day-pending one.
 
 #### What surprised me about the data (worth telling the team)
 
 - **Most Expired docs aren't really expired.** 27 of 37 Expired-status docs have no expiration date. Either someone hand-flagged them for non-expiration reasons (revoked, superseded, invalid?) or the data is noisy. Either way, the team should know — the Expired status is being used as a catch-all in their current spreadsheet workflow. V2 could split this into proper sub-statuses.
 - **Five applications have only 8 docs, not 12.** Confirmed in segment 1; the completeness gauge handles it correctly (denominator from actual doc count, not hardcoded 12), but the data tells me the "12 required documents" framing isn't universally applied yet.
-- **Three on-track apps belong to Ricardo Fuentes; one to Aisha; zero to Janet.** Janet's caseload is 18/18 stalled — entirely. Worth surfacing if I had a real conversation with the team: is this a workload imbalance, a process difference, or noise in the sample?
+- **Three on-track apps belong to Ricardo Fuentes; one to Aisha; zero to Janet.** Janet's caseload is 18/18 stalled — entirely. Worth surfacing in a real conversation with the team: is this a workload imbalance, a process difference, or noise in the sample?
 
 #### Future-date artifact (flagged for next segment)
 
-The 2026-01-30 anchor means some `date_received` values in the data are after "now." Not visible in the list view (no `date_received` column), but the detail view will show this. Mitigated in the segment 3 prompt: any `date_received > REFERENCE_NOW` will render as "Not yet received" in the detail view UI. Underlying data untouched.
+The 2026-01-30 anchor means some `date_received` values in the data are after "now." Not visible in the list view (no `date_received` column), but the detail view will show this. Initial plan in segment 3: render `date_received > REFERENCE_NOW` as "Not yet received." (See segment 3 for the revised resolution that ultimately shipped.)
 
 #### What I'm doing before the next segment
 
@@ -239,7 +241,7 @@ The 2026-01-30 anchor means some `date_received` values in the data are after "n
 This segment had more moving pieces than the previous two — a new route, a new persistence layer, an update to the existing data loader, and navigation wiring — so the prompt was correspondingly more structured. Three things baked in that paid off:
 
 - **Specified the localStorage layer as its own module** (`src/lib/storage.ts`) rather than letting the agent inline it into the page. Isolating it makes it testable, swappable with a real backend in V2, and keeps the rest of the app oblivious to storage details.
-- **Pre-empted the future-date artifact.** The 2026-01-30 reference date means some `date_received` values in the data are after "now" — not visible in the list view but problematic in the detail view. Specified "render as 'Not yet received' if date_received > REFERENCE_NOW" directly in the prompt so it didn't get missed.
+- **Pre-empted the future-date artifact.** The 2026-01-30 reference date means some `date_received` values in the data are after "now" — not visible in the list view but problematic in the detail view. Initial plan: render as "Not yet received" if `date_received > REFERENCE_NOW`. (Later replaced with showing the actual date — see "My critical engagement" below.)
 - **Required an integration spot-check.** Asked the agent to simulate a status edit on an on-track app and report what happens to completeness and stalled status. This is what proves the override merge propagates correctly through the data layer to the derived state — far more useful than verifying that types compile.
 
 #### What the agent produced
@@ -261,21 +263,21 @@ Type-checked clean. All three routes (`/`, `/applications/[id]`, missing-ID fall
 - **Visual urgency: color + dot, not color alone.** Three tiers (red <30d/expired, amber 30-90d, green >90d, no dot when no expiration). The dot is additive because color alone fails for colorblind users.
 - **No `Card` component.** Used semantic divs and borders for the header section. Card would be one more shadcn install for a layout this simple.
 - **Used `use(params)` to unwrap.** Next.js 16 makes `params` a Promise even in client components; `use()` is the documented unwrap path. Correct API for the version.
-- **Caught a UTC vs local-midnight parsing bug** in the REFERENCE_NOW constant. `new Date("2026-01-30")` parses as UTC midnight, which in my local timezone (America/Los_Angeles, UTC-8) renders as "January 29" — a one-day-off display bug I would have shipped. Agent verified the stalled count didn't change (`differenceInDays` measures full 24h periods, so the 8-hour TZ shift doesn't cross day boundaries in any comparison), then fixed by switching to the local-midnight constructor `new Date(2026, 0, 30)`. Defensive against a bug I likely wouldn't have noticed.
+- **Caught a UTC vs local-midnight parsing bug** in the `REFERENCE_NOW` constant. `new Date("2026-01-30")` parses as UTC midnight, which in my local timezone (America/Los_Angeles, UTC-8) renders as "January 29" — a one-day-off display bug I would have shipped. Agent verified the stalled count didn't change (`differenceInDays` measures full 24h periods, so the 8-hour TZ shift doesn't cross day boundaries in any comparison), then fixed by switching to the local-midnight constructor `new Date(2026, 0, 30)`. Defensive against a bug I likely wouldn't have noticed.
 
 #### My critical engagement
 
-The biggest judgment call this segment was about the **future-date artifact** — and specifically, deciding what *not* to build to solve it.
+The biggest judgment call this segment was about the **future-date artifact** — specifically, deciding how to display dates that fall after the reference date without introducing scope creep.
 
-The artifact: with `REFERENCE_NOW = 2026-01-30`, 90 of 620 doc rows (~14.5%) have `date_received` values in the future relative to "now." Most visibly, this creates rows where the status reads "Received" but the date column reads "Not yet received." Internally consistent (the system thinks the doc hasn't been received yet by the reference date), but visually awkward.
+The artifact: with `REFERENCE_NOW = 2026-01-30`, 90 of 620 doc rows (~14.5%) have `date_received` values in the future relative to "now." In the detail view, this initially rendered as rows where the status said "Received" but the date said "Not yet received" — internally consistent (the system thinks the doc hasn't been received yet by the reference date), but creates a verbal contradiction.
 
-Three options I considered:
+I considered three approaches:
 
 1. **Move the reference date forward** to eliminate future-dated `date_received` values. Pushing to ~2026-02-12 would do it but eliminates all 4 on-track applications, leaving the Stalled filter functionally equivalent to the All filter. Worse trade-off than the artifact.
-2. **Build a date picker** to let the user pick "now." Tempting because it makes the limitation disappear, but: it's solving a development-time problem with a user-facing feature, it's explicit scope creep against the V1 scope doc, and it suggests I couldn't make a clean engineering judgment myself — which is the opposite of the signal I want to send.
-3. **Keep the current anchor, surface the trade-off explicitly.** Add one line of muted text to the list-view header making the reference date visible to viewers ("Reference date: January 30, 2026 — sample data is a snapshot"), and explain the trade-off in 25 seconds during the demo.
+2. **Build a date picker** to let the user pick "now." Tempting because it makes the limitation disappear, but it solves a development-time problem with a user-facing feature and represents scope creep against the V1 scope doc.
+3. **Show the actual date from the CSV.** The reference date is already disclosed in the list view header. Users seeing "received on Feb 8" when the reference is Jan 30 can map it to the snapshot framing. This is the most honest rendering — show the data as it is, give users the context to interpret it.
 
-**Picked option 3.** The decision is well-reasoned, the artifact is bounded (14.5% of rows, mostly invisible unless you drill into a stalled app's details), and the demo narration turns it into evidence of engineering judgment rather than a flaw to hide.
+Initially shipped option 1's mitigation (mask future dates as "Not yet received"), then reconsidered and switched to option 3 during documentation. The mask was creating a contradiction between status and date columns; removing the mask removes the contradiction without introducing scope.
 
 #### Spot-check result
 
@@ -291,14 +293,13 @@ Stays on-track throughout because the app is only 4 days old at the reference da
 
 #### Data weirdness worth knowing about
 
-- **90 of 620 docs (~14.5%) have `date_received` > REFERENCE_NOW** and will display as "Not yet received." Breakdown by status: 37 Received, 32 Approved, 14 Under Review, 7 Expired.
-- **The 7 Expired-with-future-date_received rows** are the oddest case in the data — "received in the future, then expired." Almost certainly noise from however the sample data was generated. The tightened Expired rule from segment 2 (requires `expiration_date ≤ now`) means these don't trip stalled detection regardless, but they'll look strange if a user opens one and sees Status=Expired + Received="Not yet received" + an expiration date.
-- **The combination matters for demo narration.** Worth a one-line acknowledgment during the demo: *"You'll see a few rows where the status disagrees with the date — that's an artifact of fixed-reference-date evaluation against snapshot data."*
+- **90 of 620 docs (~14.5%) have `date_received` > REFERENCE_NOW** and will display with their actual future-relative-to-now dates. Breakdown by status: 37 Received, 32 Approved, 14 Under Review, 7 Expired.
+- **The 7 Expired-with-future-date_received rows** are the oddest case in the data — "received in the future, then expired." Almost certainly noise from however the sample data was generated. The tightened Expired rule from segment 2 (requires `expiration_date ≤ now`) means these don't trip stalled detection regardless.
 
 #### What I'm doing before the next segment
 
 1. Browser sanity-check the three things that prove localStorage actually works end-to-end: edit a status → refresh → still there; edit a status → back to list → completeness reflects change; DevTools confirms the JSON shape under `newity-doc-checklist-v1`.
-2. Added a one-line reference-date indicator to the list view header so the snapshot framing is visible to anyone using the app (not just discoverable through the demo narration).
+2. Added a one-line reference-date indicator to the list view header so the snapshot framing is visible to anyone using the app.
 3. Commit before moving to the expiring-soon view.
 
 ### Build segment 4: Expiring-soon view with cross-application triage
@@ -333,9 +334,9 @@ Shortest segment so far because most of the work was composition rather than new
 
 The product insight that emerged from this segment is worth more than the feature itself: **all 7 entries in the expiring-soon view are "Bank Statements (90 day)."** The agent surfaced this — other expiration-bearing docs in the data (tax returns, business licenses) have multi-year expirations that fall outside the 30-day window. Bank statements are the only short-lived doc type.
 
-That reframes what this view is for. It's not a generic "documents expiring soon" list — it's a **bank-statement-refresh triage queue**. Which is a known loan-ops workflow concern, and which the team's spreadsheet would specifically miss because the spreadsheet tracks status, not expiration. Built-in demo narrative.
+That reframes what this view is for. It's not a generic "documents expiring soon" list — it's a **bank-statement-refresh triage queue**. A known loan-ops workflow concern, and one the team's spreadsheet would specifically miss because the spreadsheet tracks status, not expiration.
 
-The other thing worth flagging: the **"Approved but expired"** rows (Northstar Accounting, Crown Jewelers in the screenshots) are this view's strongest argument for existing. A doc that's been approved and forgotten, then expires underneath the team, is exactly the kind of failure mode the current workflow can't catch — and exactly what this view surfaces. The decision to make selection driven by `expiration_date` instead of `status` is what makes this work.
+The other thing worth flagging: the **"Approved but expired"** rows (Northstar Accounting, Crown Jewelers) are this view's strongest argument for existing. A doc that's been approved and forgotten, then expires underneath the team, is exactly the kind of failure mode the current workflow can't catch — and exactly what this view surfaces. The decision to make selection driven by `expiration_date` instead of `status` is what makes this work.
 
 #### What I'm doing before the next segment
 
@@ -380,11 +381,11 @@ My reasoning:
 1. The cost was real but bounded — 35-minute hard ceiling, actual 18 minutes.
 2. The underlying derived layer was already doing the aggregation. The dashboard composes existing helpers; it doesn't introduce new business logic.
 3. The cut in the original scope doc was about *the weekly auto-generated email*, which is still cut. The snapshot view is a leaner subset.
-4. Honesty about the expansion preserves the scope-discipline narrative. The scope doc gets a "Scope adjustments during build" section, not a quiet rewrite of the original V1 list. The git history shows: cut → built V1 → reintroduced as documented adjustment. That's an honest engineering trail.
+4. Documenting the expansion preserves an honest engineering trail. The scope doc gets a "Scope adjustments during build" section, not a quiet rewrite of the original V1 list. Git history shows: cut → built V1 → reintroduced as documented adjustment.
 
 If any of those four had been different — if the derived layer hadn't been there, if I'd run over the ceiling, if the original cut had been about exactly this snapshot view, or if the only way to fit it was to silently rewrite the scope doc — I would have left it cut.
 
-#### Demo-relevant findings worth surfacing
+#### Findings worth surfacing to the team
 
 - **Janet Morrison is 18/18 stalled — 100%.** Per-processor view makes this visible; the team lead's current spreadsheet cannot.
 - **4 of the 5 most overdue applications belong to Ricardo Fuentes.** Not necessarily a Ricardo problem — could be workload imbalance, doc-mix variance, or process drift — but it's a question the team lead would never have known to ask without this view.
@@ -427,11 +428,11 @@ Two paths forward:
 1. **Build out a real data-quality framework** (multiple checks, configurable rules, severity tiers) — way out of scope for V1 and would have eaten the remaining time budget.
 2. **Cut the feature, surface the 27/37 finding through the demo narrative instead.**
 
-Option 2 wins on three dimensions:
+Option 2 wins for three reasons:
 
-- **The engineering insight survives.** It's still in this AI log, will be in the demo, and motivates the tightened stalled rule. Nothing is lost; the artifact moves from UI to narration.
-- **The scope story gets cleaner.** One deliberate adjustment (dashboard), not two. Sharper signal on scope discipline — exactly what the brief is testing for.
-- **The brief is explicit on this.** "Telling us your tool is perfect is a red flag." Cutting your own work because it doesn't earn its place is the opposite of that red flag.
+- **The engineering insight survives.** It's still in this AI log, still in the demo, and still motivates the tightened stalled rule. Nothing is lost; the artifact moves from UI to narration.
+- **The scope story stays cleaner.** One deliberate adjustment (dashboard), not two. Less to defend, more coherent product story.
+- **Shipping work that doesn't earn its place clutters the product.** Cutting weak features is part of finishing them.
 
 #### My critical engagement
 
@@ -439,9 +440,9 @@ This was the strongest scope-discipline moment in the build. Three things made t
 
 1. **Willingness to look at what I'd built and ask whether the label matched the code.** "Data quality" was aspirational; the implementation was a single check. Mid-build, with momentum behind shipping it, the temptation is to keep the feature and rationalize the framing. The right move was the other direction.
 2. **The time investment was small (~22 min) and recoverable.** Sunk cost wasn't strong enough to justify shipping a weak feature.
-3. **A clear alternative existed.** The insight didn't disappear — it just moved from UI to narration. That's a real path, not a face-saving rationalization. The 27/37 finding still lands in the demo when explaining why the Expired rule was tightened.
+3. **A clear alternative existed.** The insight didn't disappear — it just moved from UI to narration. That's a real path, not face-saving. The 27/37 finding still lands in the demo when explaining why the Expired rule was tightened.
 
-If a reviewer reads this segment and thinks *"she built it and then deleted it"* — that's exactly the read I want. The build process surfaced a real insight; the right artifact for that insight wasn't a UI feature.
+The build process surfaced a real insight; the right artifact for that insight wasn't a UI feature. Cutting is part of building.
 
 #### What I'm doing before Phase 4
 
@@ -460,9 +461,9 @@ If a reviewer reads this segment and thinks *"she built it and then deleted it"*
 
 ### Prompt strategy
 
-I had reversed an earlier Phase 1 decision (the "skip tests, write a QA plan instead" decision) once V1 was feature-complete and I had time to spare. The prompt baked in three things:
+I had reversed an earlier Phase 1 decision (the "skip tests, write a QA plan instead" decision) once V1 was feature-complete and I had room in the time budget to invest in tests. The prompt baked in three things:
 
-- **Explicitly named what NOT to test.** UI components, CSV parsing, date-fns date math, localStorage browser integration. Each had a one-line rationale in the prompt and the agent was instructed to leave a comment in the file for each skipped category. This makes the omissions visible rather than invisible — a reviewer can see the testing strategy at a glance.
+- **Explicitly named what NOT to test.** UI components, CSV parsing, date-fns date math, localStorage browser integration. Each had a one-line rationale in the prompt and the agent was instructed to leave a comment in the file for each skipped category. This makes the omissions visible rather than invisible — a future engineer reading the test file can see the testing strategy at a glance.
 - **Required boundary-pin tests on `urgencyTier`.** Day 30 → amber vs. red is a one-character difference in the implementation (`<` vs `<=`). Without a pinned test, the implementation's behavior is ambiguous to anyone reading the code later. The prompt called for these tests with a comment explaining the choice — turning code ambiguity into documented behavior.
 - **Required inline fixtures.** No reading from the real CSV. Each test owns a small hand-built fixture that obviously illustrates the case being tested. The test file reads top-to-bottom as a spec, not as a "fixture wrangling" exercise.
 
@@ -498,9 +499,9 @@ This is the highest-blast-radius gap in current coverage — the loader is where
 
 ### My critical engagement
 
-- **Decided to skip writing the loader test myself** despite knowing it was the most valuable next test. Time-budget call: it would have taken ~15 min, which I needed for README and demo recording. Documenting it in the QA plan and the demo narrative is the honest trade.
-- **The boundary-pin tests are the strongest demo moment in this phase.** Most candidates' unit tests are "does the happy path work." Boundary pins say "I know exactly where the implementation's behavior is ambiguous, and I've made it explicit." That's a different level of testing thinking.
-- **Reversed my Phase 1 decision.** Phase 1 captured my decision to skip tests in favor of feature work — at the time, with no time to spare, that was the right call. After V1 was feature-complete and I'd cut a segment-6 feature, I had room to do tests AND the bonus signal was worth claiming. The reversal is itself a piece of engineering judgment under changing constraints.
+- **Decided to skip writing the loader test myself** despite knowing it was the most valuable next test. Time-budget call: it would have taken ~15 min, which I needed for README and demo recording. Documenting it in the QA plan is the honest trade.
+- **Boundary-pin tests are the most informative ones in the file.** "Does the happy path work" is the default mode of testing; boundary pins say "I know exactly where the implementation's behavior is ambiguous, and I've made it explicit." Two different modes of testing, both valuable, but the second one is what makes the test file readable as a spec.
+- **Reversed my Phase 1 decision.** Phase 1 captured my decision to skip tests in favor of feature work — at the time, with no time to spare, that was the right call. After V1 was feature-complete and I'd cut a segment-6 feature, I had room to invest in tests. The reversal is itself engineering judgment under changing constraints — the right answer depends on what's already been built and how much time remains.
 
 ### What I'm doing before Phase 5
 
@@ -515,7 +516,7 @@ This is the highest-blast-radius gap in current coverage — the loader is where
 **Date:** 05/19/2026
 **Tool:** Claude (web)
 **Output:** `README.md`, `scope-doc.md` (Scope adjustments section), `ai-log.md` (this document), demo script outline
-**Goal:** Convert the build artifacts and engineering decisions into shipping documentation. README clear enough that a reviewer can run the project in under 5 minutes; self-assessment honest enough to pass the brief's "telling us your tool is perfect is a red flag" test; demo script tight enough to land under 10 minutes.
+**Goal:** Convert the build artifacts and engineering decisions into shipping documentation. README clear enough that a reviewer can run the project in under 5 minutes; self-assessment honest enough to be useful to whoever inherits the code; demo script tight enough to land under 10 minutes.
 
 ### Prompt strategy
 
@@ -536,9 +537,9 @@ By Phase 5 the AI was no longer producing decisions — it was converting decisi
 
 Specific places I edited or overrode what came back:
 
-- **Trimmed self-assessment dressing.** First drafts of the "what's rough" section had each limitation softened with hedging language ("could potentially be improved by..."). I rewrote them as direct statements of fact — "stalled-detection thresholds are hardcoded," "no audit log," "no accessibility audit." The brief is explicit that honesty about fragility is the signal, not graceful framing.
-- **Cut the "polish" framing throughout.** AI drafts kept reaching for "polished UI" or "clean design" language. The brief is explicit that polish isn't evaluated. Reframed every instance toward usability or product judgment instead.
-- **Pushed back on a data quality callout dropdown.** Mid-Phase-3, the AI suggested expanding the data quality callout into an interactive disclosure showing affected docs. I built it, then sat with it and realized the framing overpromised what the code did. Cut it before submission — see segment 6 of this log. This is captured here because the *decision to cut* came out of a documentation moment (writing the README description of the feature exposed how thin the implementation was relative to the label).
+- **Trimmed self-assessment dressing.** First drafts of the "what's rough" section had each limitation softened with hedging language ("could potentially be improved by..."). I rewrote them as direct statements of fact — "stalled-detection thresholds are hardcoded," "no audit log," "no accessibility audit." Honest fragility is more useful than graceful hedging — a future maintainer needs to know where the weak spots are, not be reassured.
+- **Cut the "polish" framing throughout.** AI drafts kept reaching for "polished UI" or "clean design" language. Polish doesn't help the team using the tool — usability does. Reframed every instance toward usability or product judgment instead.
+- **Pushed back on a data quality callout dropdown.** Mid-Phase-3, the AI suggested expanding the data quality callout into an interactive disclosure showing affected docs. I built it, then sat with it and realized the framing overpromised what the code did. Cut it before submission — see segment 6 of this log. This is captured here because the decision to cut came out of a documentation moment (writing the README description of the feature exposed how thin the implementation was relative to the label).
 - **Owned the demo narrative explicitly.** AI suggested several phrasings for the 27/37 finding in the demo segment. I picked the one that frames the cut as judgment rather than face-saving: *"I built a callout for this and then cut it because the label overpromised what the code did. The right place for this insight is in the conversation with the team, not as a UI feature."*
 
 ### What I'm doing before submission
@@ -558,7 +559,3 @@ Specific places I edited or overrode what came back:
 | Phase 4 — Testing | 20 min |
 | Phase 5 — Documentation + demo recording | 20 min |
 | **Total** | **~3h 55m** |
-
-Came in just under the 4-hour cap. The build itself stayed within its scope-doc time plan; documentation and demo recording were intentionally lean. The cap held because the scope held — three V1 views, one documented adjustment (dashboard), one feature built and cut (data quality callout), and a focused test suite. Cutting the data quality callout mid-build was what created the buffer for tests + docs + recording without overrun.
-
----
