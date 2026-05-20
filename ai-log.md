@@ -1,4 +1,4 @@
-# AI Usage Log — NEWITY Product Engineer Assessment
+# AI Usage Log - NEWITY Product Engineer Assessment
 
 Primary tools: Claude Code (build), Claude in VS Code via extension (side conversations, doc work, pressure-testing decisions).
 
